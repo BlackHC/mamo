@@ -83,4 +83,16 @@ And module calls?
 Another idea which is more difficult to implement is lazy loading of data. But that would require dummy/proxy objects.
 Just add a custom wrapper for cases when I want to use that feature!!!
 
+## How do we reload values actually???
 
+I guess the initial idea was to use memoization to avoid recomputation.
+This means that code has to be executed though. And we will dynamically decide whether to
+reexecute it or load stored values.
+
+## Identity of values
+
+PyTorch and hashing is a baaaad idea. Can instead rely on trying to figure out if we have a CID instead. (Do we know how the value was computed?)
+
+## Do we want to check CID values for staleness every single time?
+
+Not, not really. Only when we load them initially!

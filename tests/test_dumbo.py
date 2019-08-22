@@ -4,7 +4,7 @@ import dumbo.internal.stopwatch_context as swc
 
 
 @dumbo.dumbo()
-def slow_operation(a:int, b:int):
+def slow_operation(a: int, b: int):
     time.sleep(a)
     return a + b
 

@@ -4,6 +4,7 @@ This module is about figuring out consistent names for things.
 """
 from dataclasses import dataclass
 import hashlib
+from dumbo.internal.qualified_name import get_qualified_name
 
 
 @dataclass
@@ -13,12 +14,12 @@ class FunctionIdentity:
 
 
 def get_func_qualified_name(func):
-    # TODO: handle Jupyter notebooks?
-    # In notebooks, __module__ will be "__main__".
-    return f"{func.__module__}.{func.__qualname__}"
+    return get_qualified_name(func)
 
 
 def get_func_hash(func):
     return hashlib.md5(func.__code__.co_code)
 
 
+def identify_function(func):
+    return FunctionIdentity(get_func_qualified_name(func), get_func_hash(func))
