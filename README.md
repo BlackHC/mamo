@@ -96,3 +96,73 @@ PyTorch and hashing is a baaaad idea. Can instead rely on trying to figure out i
 ## Do we want to check CID values for staleness every single time?
 
 Not, not really. Only when we load them initially!
+
+## What about returning constants/literal?
+
+What if we memoize a look-up function that returns cached objects itself?
+Or the same object is returned by multiple functions?
+We could add a proxy? And connect it to the right CID?
+Could use the latest/longest CID?
+
+Could always wrap results in a wrapper?
+
+```python
+@dumbo
+def f():
+    return x
+
+
+result = f()
+...
+```
+
+Create a view/copy?
+
+I really am looking for a computational graph. Could I use TorchScript?
+This would allow me to track how variables have been created ...
+
+But we never store this identity in code later.
+
+Once a value has been assigned to a variable, it loses its history and origin.
+
+Maybe I should be explicit about its origin then?
+
+```python
+result = dumbo(f, ..., "description?")
+```
+I kinda wanna store the call info with the variable. I could just use a subfield? but then 
+I need to duplicate. So need a proxy and yadda yadda
+
+```python
+X = "Hello world"
+
+def a():
+    return X
+    
+
+def b():
+    return X
+    
+Y = a()
+Z = b()
+
+# If X changes both Y and Z need to change.
+# If either a or b changes, either Y or Z need to change.
+```
+
+I also need to track global variables in functions.. not just calls! That makes it slightly easier though \o/
+
+This really would work well with TorchScript or anything else that allows me to track data dependencies. It really means that I cannot use regular variables/objects anymore because I need to keep track of these things.
+
+Alternatively, I could try to enfore a "each call, different result object" policy. For Torch and NumPy, I might just get different views if necessary!!!
+
+## How do I persist a WeakKeyDictionary and what does that even mean?
+
+I am using a `WeakKeyDictionary` as not to waste resources at the moment.
+
+That only makes sense in so far as I don't care about memory management just yet.
+
+However, for persistence, I would want to base this on different decisions.
+
+I probably want to use a two-layer system that keeps a LRU-cache in memory and second layer
+that uses ZODB for persistence.

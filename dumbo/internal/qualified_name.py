@@ -1,6 +1,3 @@
-
-
-
 def get_qualified_name(func):
     # TODO: handle Jupyter notebooks?
     # In notebooks, __module__ will be "__main__".
