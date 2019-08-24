@@ -166,3 +166,22 @@ However, for persistence, I would want to base this on different decisions.
 
 I probably want to use a two-layer system that keeps a LRU-cache in memory and second layer
 that uses ZODB for persistence.
+
+## The default Fibonacci test case already breaks my policy *lol*
+
+Of course, returning ints and literals is a bad idea because it breaks the wrappers.
+
+## My error handling sucks
+
+Identities don't store the actual values, so it's impossible to debug.
+I should probably at least store the creating context! (As strings?)
+
+Or, I could resolve values with a WeakValueDictionary.
+
+## Always wrap primitive types in constant numpy arrays?
+
+Also, dumbo assumes immutable data types essentially. We can also enforce this to a degree.
+
+## How do I write tests for Dumbo?
+
+I need a range of simple unit tests and integration tests for different modules to be able to keep developing the library and be sure that it works as intended.

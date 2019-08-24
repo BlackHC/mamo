@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-import hashlib
 from typing import Tuple, Set
-from dumbo.internal.qualified_name import get_qualified_name
+from dumbo.internal import reflection
 from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from functools import wraps
@@ -15,57 +14,48 @@ class ValueIdentity(Persistent):
     pass
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class ValueNameIdentity(ValueIdentity):
     unique_name: str
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class ValueFingerprintIdentity(ValueIdentity):
     qualified_type_name: str
     fingerprint: int
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class ValueCIDIdentity(ValueIdentity):
     cid: 'CallIdentity'
 
 
-def get_type_qualified_name(value):
-    return get_qualified_name(type(value))
-
-
-@dataclass
+@dataclass(unsafe_hash=True)
 class FunctionIdentity(Persistent):
     qualified_name: str
     hashed_code: int
 
 
-def get_func_qualified_name(func):
-    return get_qualified_name(func)
-
-
-def get_func_hash(func):
-    return hashlib.md5(func.__code__.co_code)
-
-
-@dataclass
+@dataclass(unsafe_hash=True)
 class CallIdentity(Persistent):
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
-    kwargs_vid: Set[Tuple[str, ValueIdentity], ...]
+    kwargs_vid: Set[Tuple[str, ValueIdentity]]
 
 
 class CachedValue(Persistent):
     pass
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class ExternallyCachedValue(CachedValue):
     path: str
 
+    def load(self):
+        return None
 
-@dataclass
+
+@dataclass(unsafe_hash=True)
 class DBCachedValue(CachedValue):
     value: object
 
@@ -95,11 +85,8 @@ class DumboOnlineCache:
         self.value_to_vid = {}
         self.persisted_cache = persisted_cache
 
-    def get_value(self, vid):
-        if vid in self.vid_to_value:
-            return self.vid_to_value[vid]
-
-        cached_value = self.persisted_cache.get(vid)
+    def try_load_cached_value(self, vid):
+        cached_value = self.persisted_cache.get_cached_value(vid)
         if cached_value is None:
             return UNKNOWN
 
@@ -107,18 +94,31 @@ class DumboOnlineCache:
         if isinstance(cached_value, DBCachedValue):
             value = cached_value.value
         else:
-            raise TypeError(f"Handling {cached_value} not implemented yet!")
+            raise TypeError(f"Handling of {cached_value} not implemented yet!")
+        return value
 
-        self.vid_to_value[vid] = value
-        self.value_to_vid[id(value)] = vid
+    def get_value(self, vid):
+        if vid in self.vid_to_value:
+            return self.vid_to_value[vid]
+
+        value = self.try_load_cached_value(vid)
+        if value is not UNKNOWN:
+            # Cache the value in the online layer.
+            self.vid_to_value[vid] = value
+            self.value_to_vid[id(value)] = vid
+
         return value
 
     def get_vid(self, value):
         return self.value_to_vid.get(id(value))
 
     def update(self, vid, value):
-        # TODO: do I need to turn this into something transactional?
-        # Ie no mutations until everything is validated?
+        # This is a transactional function that first error-checks/validates and
+        # only then performs mutations.
+        # This can still fail to be atomic because of bugs
+        # but not because of invalid parameters.
+
+        # Validation checks:
         existing_value = UNKNOWN
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
@@ -136,8 +136,7 @@ class DumboOnlineCache:
                     "This makes tracking possible."
                 )
 
-        # Now perform changes.
-
+        # Now perform changes:
         # Unlink existing value.
         if existing_value is not UNKNOWN:
             del self.value_to_vid[id(existing_value)]
@@ -161,40 +160,47 @@ class Dumbo:
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
 
-    def get_value(self, vid):
+    def _get_value(self, vid):
         return self.online_cache.get_value(vid)
 
-    def get_vid(self, value):
+    def _get_vid(self, value):
         return self.online_cache.get_vid(value)
 
-    def identify_function(self, func):
-        return FunctionIdentity(get_func_qualified_name(func), get_func_hash(func))
+    def _identify_function(self, func):
+        return FunctionIdentity(
+            reflection.get_func_qualified_name(func),
+            reflection.get_func_hash(func)
+        )
 
-    def identify_call(self, fid, args, kwargs):
-        args_vid = tuple(self.identify_value(arg) for arg in args)
-        kwargs_vid = set((name, self.identify_value(value)) for name, value in kwargs.items())
+    def _identify_call(self, fid, args, kwargs):
+        args_vid = tuple(self._identify_value(arg) for arg in args)
+        kwargs_vid = frozenset((name, self._identify_value(value)) for name, value in kwargs.items())
 
         return CallIdentity(fid, args_vid, kwargs_vid)
 
-    def identify_value(self, value):
+    def _identify_value(self, value):
         # TODO can we link CIDs and fingerprints?
         # TODO what about having a description identity/named identity for datasets?
-        vid = self.get_value(value)
+        vid = self._get_vid(value)
         if vid is not None:
             return vid
 
         # TODO: gotta special-case lots of types here!!
         # At least numpy and torch?
-        return ValueFingerprintIdentity(get_type_qualified_name(value), hashlib.md5(value))
+        return ValueFingerprintIdentity(
+            reflection.get_type_qualified_name(value),
+            reflection.get_value_hash(value)
+        )
 
     def wrap_function(self, func):
-        fid = self.identify_function(func)
+        fid = self._identify_function(func)
 
         @wraps(func)
         def wrapped_func(*args, **kwargs):
-            cid = self.identify_call(fid, args, kwargs)
+            cid = self._identify_call(fid, args, kwargs)
             vid = ValueCIDIdentity(cid)
-            memoized_result = self.get_value(vid)
+
+            memoized_result = self._get_value(vid)
             if memoized_result is not UNKNOWN:
                 return memoized_result
 
