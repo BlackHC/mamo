@@ -1,15 +1,12 @@
-from dataclasses import dataclass
+import dumbo.internal.persisted_cache
 from dumbo.internal import state
 import pytest
 
-
-@dataclass(frozen=True)
-class Value:
-    value: int
+from .testing import DummyPersistedCache, Value
 
 
 def test_doc_initial_update_works():
-    persisted_cache = state.DumboPersistedCache()
+    persisted_cache = DummyPersistedCache()
     online_cache = state.DumboOnlineCache(persisted_cache)
 
     vid = state.ValueNameIdentity('test')
@@ -21,7 +18,7 @@ def test_doc_initial_update_works():
 
 
 def test_doc_updating_value_works():
-    persisted_cache = state.DumboPersistedCache()
+    persisted_cache = dumbo.internal.persisted_cache.DumboPersistedCache()
     online_cache = state.DumboOnlineCache(persisted_cache)
 
     vid = state.ValueNameIdentity('test')
@@ -42,7 +39,7 @@ def test_doc_updating_value_works():
 def test_doc_updating_same_value_throws():
     # Tt violates the "each call, different result" policy
     # TODO: add a custom exception type!
-    persisted_cache = state.DumboPersistedCache()
+    persisted_cache = dumbo.internal.persisted_cache.DumboPersistedCache()
     online_cache = state.DumboOnlineCache(persisted_cache)
 
     vid = state.ValueNameIdentity('test')

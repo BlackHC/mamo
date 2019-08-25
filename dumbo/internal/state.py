@@ -2,14 +2,14 @@ from dataclasses import dataclass
 from typing import Tuple, Set
 from dumbo.internal import reflection
 from persistent import Persistent
-from persistent.mapping import PersistentMapping
 from functools import wraps
-
-
-UNKNOWN = object
-
+import ZODB
+from ZODB.FileStorage.FileStorage import FileStorage
 
 # Usually, Pythonistas don't like base classes. They know nothing.
+from dumbo.internal.persisted_cache import DBCachedValue, DumboPersistedCache
+
+
 class ValueIdentity(Persistent):
     pass
 
@@ -43,37 +43,6 @@ class CallIdentity(Persistent):
     kwargs_vid: Set[Tuple[str, ValueIdentity]]
 
 
-class CachedValue(Persistent):
-    pass
-
-
-@dataclass(unsafe_hash=True)
-class ExternallyCachedValue(CachedValue):
-    path: str
-
-    def load(self):
-        return None
-
-
-@dataclass(unsafe_hash=True)
-class DBCachedValue(CachedValue):
-    value: object
-
-
-# TODO: to repr method
-class DumboPersistedCache(Persistent):
-    vid_to_cached_value: PersistentMapping
-
-    def __init__(self):
-        self.vid_to_cached_value = PersistentMapping()
-
-    def update(self, vid, value):
-        self.vid_to_cached_value[vid] = value
-
-    def get_cached_value(self, vid):
-        return self.vid_to_cached_value.get(vid, None)
-
-
 # TODO: to repr method
 class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
@@ -88,7 +57,7 @@ class DumboOnlineCache:
     def try_load_cached_value(self, vid):
         cached_value = self.persisted_cache.get_cached_value(vid)
         if cached_value is None:
-            return UNKNOWN
+            return None
 
         # Load value
         if isinstance(cached_value, DBCachedValue):
@@ -102,7 +71,7 @@ class DumboOnlineCache:
             return self.vid_to_value[vid]
 
         value = self.try_load_cached_value(vid)
-        if value is not UNKNOWN:
+        if value is not None:
             # Cache the value in the online layer.
             self.vid_to_value[vid] = value
             self.value_to_vid[id(value)] = vid
@@ -119,7 +88,7 @@ class DumboOnlineCache:
         # but not because of invalid parameters.
 
         # Validation checks:
-        existing_value = UNKNOWN
+        existing_value = None
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
             if existing_value is value:
@@ -138,7 +107,7 @@ class DumboOnlineCache:
 
         # Now perform changes:
         # Unlink existing value.
-        if existing_value is not UNKNOWN:
+        if existing_value is not None:
             del self.value_to_vid[id(existing_value)]
 
         if existing_vid is None:
@@ -201,7 +170,7 @@ class Dumbo:
             vid = ValueCIDIdentity(cid)
 
             memoized_result = self._get_value(vid)
-            if memoized_result is not UNKNOWN:
+            if memoized_result is not None:
                 return memoized_result
 
             result = func(*args, **kwargs)
@@ -218,8 +187,9 @@ class Dumbo:
 dumbo: Dumbo = None
 
 
-def init_dumbo():
+def init_dumbo(memory_only=True):
     global dumbo
     assert dumbo is None
     # TODO: add database connection and commits
-    dumbo = Dumbo(DumboPersistedCache())
+
+    dumbo = Dumbo(DumboPersistedCache(memory_only))
