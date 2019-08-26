@@ -185,3 +185,9 @@ Also, dumbo assumes immutable data types essentially. We can also enforce this t
 ## How do I write tests for Dumbo?
 
 I need a range of simple unit tests and integration tests for different modules to be able to keep developing the library and be sure that it works as intended.
+
+## How can I link/support custom hash functions
+
+The issue is that I might not just want to use the type because of hierarchies and other messes.
+
+I could use a package based system. So, look up by using `__class__.__module__`.

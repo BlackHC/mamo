@@ -1,6 +1,8 @@
 import ZODB
 import persistent
 import dataclasses
+import numpy as np
+import torch as th
 
 
 @dataclasses.dataclass
@@ -46,3 +48,25 @@ def test_persistent_inheritance():
 
     print(connection3.root.instance)
     print(connection2.root.instance)
+
+
+def test_zodb_numpy():
+    connection = ZODB.connection(None)
+    root = connection.root
+    root.entry = np.asarray([1, 2, 3])
+
+    import transaction
+
+    transaction.commit()
+    print(root.entry)
+
+
+def test_zodb_torch():
+    connection = ZODB.connection(None)
+    root = connection.root
+    root.entry = th.as_tensor([1, 2, 3])
+
+    import transaction
+
+    transaction.commit()
+    print(root.entry)

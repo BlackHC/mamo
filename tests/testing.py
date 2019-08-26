@@ -12,11 +12,11 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.external_cache_id = 0
         self.vid_to_cached_value = {}
 
-    def cache_value(self, vid, value):
+    def try_create_cached_value(self, vid, value):
         return persisted_cache.DBCachedValue(value)
 
     def update(self, vid, value):
-        self.vid_to_cached_value[vid] = self.cache_value(vid, value)
+        self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value)
 
     def get_cached_value(self, vid):
         return self.vid_to_cached_value.get(vid)
