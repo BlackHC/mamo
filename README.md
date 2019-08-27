@@ -209,5 +209,13 @@ And support aliases? So I can store a computation and retrieve it using an alias
 (Ala tags?)
 
 Also:
-* [ ] add support for tagging value cids!
+* [x] add support for tagging value cids!
 * [ ] add an is_stale check for the computational graph
+
+## All registries ought to be merged probably
+
+There will be significant overlap if I allow generation of fingerprints using
+actual data. It will need a cut-off similarly to persisted_cache etc.
+
+Also, need tests for all the new features!!!
+

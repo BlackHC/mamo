@@ -74,8 +74,21 @@ class Dumbo:
 
         return wrapped_func
 
-    def register_value(self, value, unique_name):
+    def register_external_value(self, value, unique_name):
         self.online_cache.update(ValueNameIdentity(unique_name), value)
+
+    def tag(self, value, tag_name):
+        # Value should exist in the cache.
+        if not self.online_cache.has_value(value):
+            raise ValueError('Value has not been registered previously!')
+        # Register value
+        self.online_cache.tag(self.online_cache.get_vid(value), tag_name)
+
+    def get_tag_value(self, tag_name):
+        return self.online_cache.get_tag_value(tag_name)
+
+    def get_external_value(self, unique_name):
+        return self._get_value(ValueNameIdentity(unique_name))
 
 
 dumbo: Dumbo = None

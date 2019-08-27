@@ -7,15 +7,16 @@ from typing import Dict, Any
 class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
     vid_to_value: Dict[ValueIdentity, Any]
-    value_to_vid: Dict[int, ValueIdentity]
+    id_value_to_vid: Dict[int, ValueIdentity]
+    tag_to_vid: Dict[str, ValueIdentity]
 
     def __init__(self, persisted_cache):
         self.vid_to_value = {}
-        self.value_to_vid = {}
+        self.id_value_to_vid = {}
         self.persisted_cache = persisted_cache
 
     def has_value(self, value):
-        return id(value) in self.value_to_vid
+        return id(value) in self.id_value_to_vid
 
     def get_value(self, vid):
         if vid in self.vid_to_value:
@@ -25,12 +26,12 @@ class DumboOnlineCache:
         if value is not None:
             # Cache the value in the online layer.
             self.vid_to_value[vid] = value
-            self.value_to_vid[id(value)] = vid
+            self.id_value_to_vid[id(value)] = vid
 
         return value
 
     def get_vid(self, value):
-        return self.value_to_vid.get(id(value))
+        return self.id_value_to_vid.get(id(value))
 
     def update(self, vid: ValueIdentity, value):
         # This is a transactional function that first error-checks/validates and
@@ -45,11 +46,10 @@ class DumboOnlineCache:
             if existing_value is value:
                 return
 
-        existing_vid = self.value_to_vid.get(id(value))
+        existing_vid = self.id_value_to_vid.get(id(value))
         if existing_vid is not None:
             if existing_vid is not vid:
                 # ERROR: Value has already been linked to another vid.
-                # TODO: support handlers to create views/proxies on existing results.
                 raise AttributeError(
                     f"{vid} has same value as {existing_vid}!"
                     "We follow a \"each computation, different result\" policy."
@@ -59,10 +59,10 @@ class DumboOnlineCache:
         # Now perform mutations:
         # Unlink existing value.
         if existing_value is not None:
-            del self.value_to_vid[id(existing_value)]
+            del self.id_value_to_vid[id(existing_value)]
 
         if existing_vid is None:
-            self.value_to_vid[id(value)] = vid
+            self.id_value_to_vid[id(value)] = vid
 
         self.vid_to_value[vid] = value
 
@@ -71,3 +71,24 @@ class DumboOnlineCache:
         # using initialization code.
         if isinstance(vid, ValueCIDIdentity):
             self.persisted_cache.update(vid, value)
+
+    def tag(self, vid, tag_name):
+        if vid is not None and vid not in self.vid_to_value:
+            raise ValueError(f"vid has not been registered!")
+
+        if vid is not None:
+            self.tag_to_vid[tag_name] = vid
+        else:
+            if tag_name in self.tag_to_vid:
+                del self.tag_to_vid[tag_name]
+
+        self.persisted_cache.tag(vid, tag_name)
+
+    def get_tag_value(self, tag_name):
+        tag_vid = self.tag_to_vid.get(tag_name)
+        if tag_vid is None:
+            tag_vid = self.persisted_cache.get_tag_vid(tag_name)
+        if tag_vid is None:
+            return None
+
+        return self.get_value(tag_vid)

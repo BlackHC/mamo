@@ -42,7 +42,7 @@ def get_func_hash(func):
     return hashlib.md5(func.__code__.co_code).digest()
 
 
-HASH_FUNCTION_REGISTRY: ModuleRegistry[Callable] = ModuleRegistry(default_value=None)
+FINGERPRINT_FUNCTION_REGISTRY: ModuleRegistry[Callable] = ModuleRegistry(default_value=None)
 
 
 def try_get_value_fingerprint(value):
@@ -50,8 +50,10 @@ def try_get_value_fingerprint(value):
     if isinstance(value, (bool, int, float, str,)):
         return value
 
-    hash_function = HASH_FUNCTION_REGISTRY.get(value)
     hashed_value = None
+
+    hash_function = FINGERPRINT_FUNCTION_REGISTRY.get(value)
     if hash_function is not None:
         hashed_value = hash_function(value)
+
     return hashed_value

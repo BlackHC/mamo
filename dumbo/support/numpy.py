@@ -1,6 +1,6 @@
 import numpy as np
 import hashlib
-from dumbo.internal.reflection import HASH_FUNCTION_REGISTRY
+from dumbo.internal.reflection import FINGERPRINT_FUNCTION_REGISTRY
 from dumbo.internal.persisted_cache import ModuleCacheHandler, ExternallyCachedValue, CACHED_VALUE_REGISTRY, ExternallyCachedFilePathBuilder, \
     CachedValue
 from dumbo.internal.return_handlers import RETURN_HANDLER_REGISTRY
@@ -16,7 +16,7 @@ def hash_numpy(value):
     return None
 
 
-HASH_FUNCTION_REGISTRY.add(np, hash_numpy)
+FINGERPRINT_FUNCTION_REGISTRY.add(np, hash_numpy)
 
 
 class NumpyExternallyCachedValue(ExternallyCachedValue):

@@ -105,10 +105,12 @@ CACHED_VALUE_REGISTRY: ModuleRegistry[ModuleCacheHandler] = ModuleRegistry()
 @dataclass
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
-    vid_to_cached_value: PersistentMapping
+    vid_to_cached_value: PersistentMapping[ValueIdentity, CachedValue]
+    tag_to_vid: PersistentMapping[str, ValueIdentity]
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
+        self.tag_to_vid = PersistentMapping()
         self.external_cache_id = 0
 
     def get_new_external_id(self):
@@ -172,11 +174,13 @@ class DumboPersistedCache:
 
         cached_value = cache_handler.cache(value, external_path_builder)
 
-        # TODO: handle cached_value is None and log?
+        # TODO: handle cached_value is None and log?!!
         return cached_value
 
     def update(self, vid, value):
         # TODO: value: None should just remove the entry, I think
+        # need to also update tags!
+
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:
@@ -200,3 +204,16 @@ class DumboPersistedCache:
 
         # Load value
         return cached_value.load()
+
+    def tag(self, vid, tag_name):
+        if vid is None and tag_name in self.storage.tag_to_vid:
+            del self.storage.tag_to_vid[tag_name]
+
+        if vid in self.storage.vid_to_cached_value:
+            self.storage.tag_to_vid[tag_name] = vid
+        # TODO: log?
+
+    def get_tag_vid(self, tag_name):
+        return self.storage.tag_to_vid.get(tag_name)
+
+    # TODO: sometimes I use try_get and sometimes just get!

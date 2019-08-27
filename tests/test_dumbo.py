@@ -22,7 +22,7 @@ def fib(n):
 def test_dumbo_fib():
     result = fib(8)
     assert result == 34
-    assert len(main.dumbo.online_cache.value_to_vid) == 9
+    assert len(main.dumbo.online_cache.id_value_to_vid) == 9
     assert len(main.dumbo.online_cache.vid_to_value) == 9
 
 
