@@ -6,6 +6,7 @@ from dumbo.internal.identities import ValueNameIdentity, ValueFingerprintIdentit
     CallIdentity, ValueIdentity
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
+from dumbo.internal.return_handlers import wrap_return_value
 
 
 class Dumbo:
@@ -39,11 +40,18 @@ class Dumbo:
         if vid is not None:
             return vid
 
-        # TODO: gotta special-case lots of types here!!
-        # At least numpy and torch?
+        # TODO: move the hash registry etc to here?
+
+        # We could support a generic fingerprint that uses the pickle protocol!
+        fingerprint = reflection.try_get_value_fingerprint(value)
+        if fingerprint is None:
+            raise ValueError(f'Cannot fingerprint {value}!'
+                             ' Please either add a plugin to support it,'
+                             ' or register it with a name')
+
         return ValueFingerprintIdentity(
             reflection.get_type_qualified_name(value),
-            reflection.get_value_hash(value)
+            fingerprint
         )
 
     def wrap_function(self, func):
@@ -60,9 +68,9 @@ class Dumbo:
                 return memoized_result
 
             result = func(*args, **kwargs)
-            # TODO: we might want to keep multiple results for stochastic operations
-            self.online_cache.update(vid, result)
-            return result
+            wrapped_result = wrap_return_value(result)
+            self.online_cache.update(vid, wrapped_result)
+            return wrapped_result
 
         return wrapped_func
 

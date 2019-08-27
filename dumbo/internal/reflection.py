@@ -45,12 +45,13 @@ def get_func_hash(func):
 HASH_FUNCTION_REGISTRY: ModuleRegistry[Callable] = ModuleRegistry(default_value=None)
 
 
-def get_value_hash(value):
+def try_get_value_fingerprint(value):
     # TODO: support more types... seriously
     if isinstance(value, (bool, int, float, str,)):
-        return hash(value)
+        return value
 
     hash_function = HASH_FUNCTION_REGISTRY.get(value)
-    if hash_function is None:
-        return id(value)
-    return hash_function(value)
+    hashed_value = None
+    if hash_function is not None:
+        hashed_value = hash_function(value)
+    return hashed_value

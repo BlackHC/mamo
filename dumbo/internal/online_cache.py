@@ -14,6 +14,9 @@ class DumboOnlineCache:
         self.value_to_vid = {}
         self.persisted_cache = persisted_cache
 
+    def has_value(self, value):
+        return id(value) in self.value_to_vid
+
     def get_value(self, vid):
         if vid in self.vid_to_value:
             return self.vid_to_value[vid]

@@ -191,3 +191,23 @@ I need a range of simple unit tests and integration tests for different modules 
 The issue is that I might not just want to use the type because of hierarchies and other messes.
 
 I could use a package based system. So, look up by using `__class__.__module__`.
+
+## How can I actually support value-types for using caching?
+
+If I only fingerprint literals/builtin types, and then still store as part of the CID,
+I'm fucking things up over different runs of the app as the hash will be salted.
+
+So:
+* [x] don't use hash() anywhere
+* [x] use hashlib and reproducible fingerprints!
+* [x] store primitive builtin types as values
+* [x] don't use id because ValueFingerprintIdentity will still make it into the persistent cache!
+
+Maybe, I should add a way to store named values in the persistent cache?
+
+And support aliases? So I can store a computation and retrieve it using an alias?
+(Ala tags?)
+
+Also:
+* [ ] add support for tagging value cids!
+* [ ] add an is_stale check for the computational graph

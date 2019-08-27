@@ -13,10 +13,10 @@ from dumbo.internal import main
 @dumbo.dumbo()
 def fib(n):
     if n < 0:
-        return np.asarray(0)
+        return 0
     if n < 2:
-        return np.asarray(1)
-    return np.asarray(fib(n-1)+fib(n-2))
+        return 1
+    return fib(n-1)+fib(n-2)
 
 
 def test_dumbo_fib():

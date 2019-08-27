@@ -82,24 +82,24 @@ class PicklingCacheHandler(ModuleCacheHandler):
         return sys.getsizeof(value)
 
     def cache(self, value, external_path_builder: ExternallyCachedFilePathBuilder):
-        # TODO: catch PicklingError
-        try:
-            pickled_bytes = pickle.dumps(value)
-        except pickle.PicklingError as err:
-            # TODO: log err
-            print(err)
-            return None
-
         if external_path_builder is not None:
+            try:
+                pickled_bytes = pickle.dumps(value)
+            except pickle.PicklingError as err:
+                # TODO: log err
+                print(err)
+                return None
+
             external_path = external_path_builder.build(type(value), 'pickle')
             with open(external_path, "bw") as external_file:
                 external_file.write(pickled_bytes)
             return ExternallyCachedValue(external_path)
 
+        # TODO: catch transactions error for objects that cannot be pickled here?
         return DBCachedValue(value)
 
 
-CACHED_VALUE_REGISTRY: ModuleRegistry[ModuleCacheHandler] = ModuleRegistry(PicklingCacheHandler())
+CACHED_VALUE_REGISTRY: ModuleRegistry[ModuleCacheHandler] = ModuleRegistry()
 
 
 @dataclass
@@ -156,6 +156,11 @@ class DumboPersistedCache:
 
     def try_create_cached_value(self, vid: ValueIdentity, value):
         cache_handler = CACHED_VALUE_REGISTRY.get(value)
+
+        # TODO: handle Nones
+        # maybe add a supports(value) method to avoid all the repeated checks?
+        if cache_handler is None:
+            cache_handler = PicklingCacheHandler()
 
         estimated_size = cache_handler.get_estimated_size(value)
         external_path_builder = None
