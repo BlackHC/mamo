@@ -219,3 +219,9 @@ actual data. It will need a cut-off similarly to persisted_cache etc.
 
 Also, need tests for all the new features!!!
 
+So:
+* [x] add tests for numpy and torch support
+* [ ] add tests for tagging values
+
+Tagging def needs more work and a bidirectional wrapper.
+

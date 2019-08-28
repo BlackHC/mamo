@@ -1,7 +1,7 @@
 from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Any
-
+from dumbo.internal.bimap import DictBimap
 
 # TODO: to repr method
 class DumboOnlineCache:
@@ -9,11 +9,15 @@ class DumboOnlineCache:
     vid_to_value: Dict[ValueIdentity, Any]
     id_value_to_vid: Dict[int, ValueIdentity]
     tag_to_vid: Dict[str, ValueIdentity]
+    vid_to_tag: Dict[ValueIdentity, str]
 
     def __init__(self, persisted_cache):
+        self.persisted_cache = persisted_cache
+
         self.vid_to_value = {}
         self.id_value_to_vid = {}
-        self.persisted_cache = persisted_cache
+        self.tag_to_vid = {}
+        self.vid_to_tag = {}
 
     def has_value(self, value):
         return id(value) in self.id_value_to_vid
@@ -52,7 +56,7 @@ class DumboOnlineCache:
                 # ERROR: Value has already been linked to another vid.
                 raise AttributeError(
                     f"{vid} has same value as {existing_vid}!"
-                    "We follow a \"each computation, different result\" policy."
+                    "We follow an \"each computation, different result\" policy."
                     "This makes tracking possible."
                 )
 
@@ -64,7 +68,10 @@ class DumboOnlineCache:
         if existing_vid is None:
             self.id_value_to_vid[id(value)] = vid
 
-        self.vid_to_value[vid] = value
+        if value is not None:
+            self.vid_to_value[vid] = value
+        else:
+            del self.vid_to_value[vid]
 
         # We only support caching computed values for now.
         # Fingerprints/hashes can change and named values can be reloaded
@@ -74,12 +81,14 @@ class DumboOnlineCache:
 
     def tag(self, vid, tag_name):
         if vid is not None and vid not in self.vid_to_value:
-            raise ValueError(f"vid has not been registered!")
+            raise ValueError(f"{vid} has not been registered!")
 
         if vid is not None:
             self.tag_to_vid[tag_name] = vid
+            self.vid_to_tag[vid] = tag_name
         else:
             if tag_name in self.tag_to_vid:
+                del self.vid_to_tag[self.tag_to_vid[tag_name]]
                 del self.tag_to_vid[tag_name]
 
         self.persisted_cache.tag(vid, tag_name)

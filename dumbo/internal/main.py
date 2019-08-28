@@ -29,13 +29,13 @@ class Dumbo:
     def _get_vid(self, value):
         return self.online_cache.get_vid(value)
 
-    def _identify_function(self, func):
+    def _identify_function(self, func) -> FunctionIdentity:
         return FunctionIdentity(
             reflection.get_func_qualified_name(func),
             reflection.get_func_hash(func)
         )
 
-    def _identify_call(self, fid, args, kwargs):
+    def _identify_call(self, fid, args, kwargs) -> CallIdentity:
         args_vid = tuple(self._identify_value(arg) for arg in args)
         kwargs_vid = frozenset((name, self._identify_value(value)) for name, value in kwargs.items())
 
@@ -46,9 +46,6 @@ class Dumbo:
         if vid is not None:
             return vid
 
-        # TODO: move the hash registry etc to here?
-
-        # We could support a generic fingerprint that uses the pickle protocol!
         fingerprint = MODULE_EXTENSIONS.compute_fingerprint(value)
 
         if fingerprint is None:

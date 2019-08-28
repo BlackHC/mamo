@@ -31,10 +31,12 @@ class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: PersistentMapping
     tag_to_vid: PersistentMapping
+    vid_to_tag: PersistentMapping
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
         self.tag_to_vid = PersistentMapping()
+        self.vid_to_tag = PersistentMapping()
         self.external_cache_id = 0
 
     def get_new_external_id(self):
@@ -133,10 +135,11 @@ class DumboPersistedCache:
 
     def tag(self, vid, tag_name):
         if vid is None and tag_name in self.storage.tag_to_vid:
+            del self.storage.vid_to_tag[self.storage.tag_to_vid[vid]]
             del self.storage.tag_to_vid[tag_name]
-
-        if vid in self.storage.vid_to_cached_value:
+        elif vid in self.storage.vid_to_cached_value:
             self.storage.tag_to_vid[tag_name] = vid
+            self.storage.vid_to_tag[vid] = tag_name
         # TODO: log?
 
     def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
