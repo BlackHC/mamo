@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import dumbo.internal.cached_values
 from dumbo.internal import persisted_cache
 
 
@@ -13,7 +14,7 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.vid_to_cached_value = {}
 
     def try_create_cached_value(self, vid, value):
-        return persisted_cache.DBCachedValue(value)
+        return dumbo.internal.cached_values.DBCachedValue(value)
 
     def update(self, vid, value):
         self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value)

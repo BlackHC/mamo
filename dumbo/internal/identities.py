@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Tuple, Set
+from typing import Tuple, FrozenSet
 
 from persistent import Persistent
 
@@ -36,7 +36,7 @@ class FunctionIdentity(Persistent):
 class CallIdentity(Persistent):
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
-    kwargs_vid: Set[Tuple[str, ValueIdentity]]
+    kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
 
 
 @dataclass(unsafe_hash=True)

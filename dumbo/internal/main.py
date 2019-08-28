@@ -4,9 +4,15 @@ from functools import wraps
 # Usually, Pythonistas don't like base classes. They know nothing.
 from dumbo.internal.identities import ValueNameIdentity, ValueFingerprintIdentity, ValueCIDIdentity, FunctionIdentity, \
     CallIdentity, ValueIdentity
+from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
-from dumbo.internal.return_handlers import wrap_return_value
+
+from dumbo.internal import default_module_extension
+
+
+# Install the default module extension.
+MODULE_EXTENSIONS.default_extension = default_module_extension.DefaultModuleExtension()
 
 
 class Dumbo:
@@ -43,10 +49,11 @@ class Dumbo:
         # TODO: move the hash registry etc to here?
 
         # We could support a generic fingerprint that uses the pickle protocol!
-        fingerprint = reflection.try_get_value_fingerprint(value)
+        fingerprint = MODULE_EXTENSIONS.compute_fingerprint(value)
+
         if fingerprint is None:
             raise ValueError(f'Cannot fingerprint {value}!'
-                             ' Please either add a plugin to support it,'
+                             ' Please either add an extension to support it,'
                              ' or register it with a name')
 
         return ValueFingerprintIdentity(
@@ -68,7 +75,7 @@ class Dumbo:
                 return memoized_result
 
             result = func(*args, **kwargs)
-            wrapped_result = wrap_return_value(result)
+            wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
             self.online_cache.update(vid, wrapped_result)
             return wrapped_result
 
@@ -89,6 +96,13 @@ class Dumbo:
 
     def get_external_value(self, unique_name):
         return self._get_value(ValueNameIdentity(unique_name))
+
+    def close(self):
+        # This is for tests only!
+
+        self.persisted_cache.close()
+        self.persisted_cache = None
+        self.online_cache = None
 
 
 dumbo: Dumbo = None

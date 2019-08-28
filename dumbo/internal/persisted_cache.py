@@ -1,11 +1,10 @@
-import sys
-from abc import ABC
 from dataclasses import dataclass
 from typing import Optional
 
 from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
+from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
 from dumbo.internal.identities import ValueIdentity
 
 from transaction import TransactionManager
@@ -13,60 +12,12 @@ from transaction import TransactionManager
 from ZODB import DB
 from ZODB.FileStorage.FileStorage import FileStorage
 
-from dumbo.internal.reflection import ModuleRegistry
-
 import os
 import pickle
 
+from dumbo.internal.module_extension import MODULE_EXTENSIONS
+
 MAX_DB_CACHED_VALUE_SIZE = 1024
-
-
-class CachedValue(Persistent):
-    def unlink(self):
-        # This value is about to not be part of the cache anymore.
-        # Deal with it (by removing auxiliary files etc).
-        pass
-
-    def load(self):
-        raise NotImplementedError()
-
-
-@dataclass
-class ExternallyCachedFilePathBuilder:
-    path: str
-    external_id: str
-    vid_info: str
-
-    def build(self, cache_info, ext):
-        return f'{self.path}{self.vid_info}_{cache_info}_{self.external_id}{ext}'
-
-
-class ModuleCacheHandler:
-    def get_estimated_size(self, value) -> int:
-        raise NotImplementedError()
-
-    def cache(self, value, external_path_builder: Optional[ExternallyCachedFilePathBuilder]) -> CachedValue:
-        raise NotImplementedError()
-
-
-
-@dataclass(unsafe_hash=True)
-class ExternallyCachedValue(CachedValue, ABC):
-    path: str
-
-    def unlink(self):
-        unlinked_path = self.path + '.unlinked'
-        # TODO: shall we pass the vid as argument and store it in a file next to
-        # the unlinked entry?
-        os.rename(self.path, unlinked_path)
-
-
-@dataclass(unsafe_hash=True)
-class DBCachedValue(CachedValue, ABC):
-    value: object
-
-    def load(self):
-        return self.value
 
 
 class BuiltinExternallyCachedValue(ExternallyCachedValue):
@@ -75,38 +26,11 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
             return pickle.load(external_file)
 
 
-class PicklingCacheHandler(ModuleCacheHandler):
-    def get_estimated_size(self, value):
-        # This is a rather bad approximation that does not take into account
-        # the size of elements.
-        return sys.getsizeof(value)
-
-    def cache(self, value, external_path_builder: ExternallyCachedFilePathBuilder):
-        if external_path_builder is not None:
-            try:
-                pickled_bytes = pickle.dumps(value)
-            except pickle.PicklingError as err:
-                # TODO: log err
-                print(err)
-                return None
-
-            external_path = external_path_builder.build(type(value), 'pickle')
-            with open(external_path, "bw") as external_file:
-                external_file.write(pickled_bytes)
-            return ExternallyCachedValue(external_path)
-
-        # TODO: catch transactions error for objects that cannot be pickled here?
-        return DBCachedValue(value)
-
-
-CACHED_VALUE_REGISTRY: ModuleRegistry[ModuleCacheHandler] = ModuleRegistry()
-
-
 @dataclass
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
-    vid_to_cached_value: PersistentMapping[ValueIdentity, CachedValue]
-    tag_to_vid: PersistentMapping[str, ValueIdentity]
+    vid_to_cached_value: PersistentMapping
+    tag_to_vid: PersistentMapping
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
@@ -133,7 +57,7 @@ class DumboPersistedCache:
         return DumboPersistedCache(db, None)
 
     @staticmethod
-    def from_file(path=None):
+    def from_file(path: Optional[str] = None):
         if path is None:
             path = "./"
         db = DB(FileStorage(path + "dumbo_persisted_cache"))
@@ -153,31 +77,33 @@ class DumboPersistedCache:
 
         self.storage = root.storage
 
+    def close(self):
+        self.db.close()
+
     def get_new_external_id(self):
         return self.storage.get_new_external_id()
 
-    def try_create_cached_value(self, vid: ValueIdentity, value):
-        cache_handler = CACHED_VALUE_REGISTRY.get(value)
+    def try_create_cached_value(self, vid: ValueIdentity, value: object) -> Optional[CachedValue]:
+        estimated_size = MODULE_EXTENSIONS.get_estimated_size(value)
+        if estimated_size is None:
+            # TODO log?
+            return None
 
-        # TODO: handle Nones
-        # maybe add a supports(value) method to avoid all the repeated checks?
-        if cache_handler is None:
-            cache_handler = PicklingCacheHandler()
-
-        estimated_size = cache_handler.get_estimated_size(value)
         external_path_builder = None
-        if estimated_size > MAX_DB_CACHED_VALUE_SIZE:
-            external_path_builder = ExternallyCachedFilePathBuilder(
+        # If we exceed a reasonable size, we don't store the result in the DB.
+        # However, if we are memory-only, we don't cache in external files.
+        if estimated_size > MAX_DB_CACHED_VALUE_SIZE and self.path is not None:
+            external_path_builder = ExternallyCachedFilePath(
                 self.path, self.get_new_external_id(),
                 vid.get_external_info()
             )
 
-        cached_value = cache_handler.cache(value, external_path_builder)
+        cached_value = MODULE_EXTENSIONS.cache_value(value, external_path_builder)
 
         # TODO: handle cached_value is None and log?!!
         return cached_value
 
-    def update(self, vid, value):
+    def update(self, vid: ValueIdentity, value: object):
         # TODO: value: None should just remove the entry, I think
         # need to also update tags!
 
@@ -194,7 +120,7 @@ class DumboPersistedCache:
             if cached_value is not None:
                 self.storage.vid_to_cached_value[vid] = cached_value
 
-    def get_cached_value(self, vid) -> CachedValue:
+    def get_cached_value(self, vid) -> Optional[CachedValue]:
         return self.storage.vid_to_cached_value.get(vid)
 
     def get_value(self, vid):
@@ -213,7 +139,5 @@ class DumboPersistedCache:
             self.storage.tag_to_vid[tag_name] = vid
         # TODO: log?
 
-    def get_tag_vid(self, tag_name):
+    def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
         return self.storage.tag_to_vid.get(tag_name)
-
-    # TODO: sometimes I use try_get and sometimes just get!

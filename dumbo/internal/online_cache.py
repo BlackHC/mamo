@@ -22,7 +22,7 @@ class DumboOnlineCache:
         if vid in self.vid_to_value:
             return self.vid_to_value[vid]
 
-        value = self.persisted_cache.get_cached_value(vid)
+        value = self.persisted_cache.get_value(vid)
         if value is not None:
             # Cache the value in the online layer.
             self.vid_to_value[vid] = value
