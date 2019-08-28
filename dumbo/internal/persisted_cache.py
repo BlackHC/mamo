@@ -6,6 +6,7 @@ from persistent.mapping import PersistentMapping
 
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
 from dumbo.internal.identities import ValueIdentity
+from dumbo.internal.bimap import PersistentBimap
 
 from transaction import TransactionManager
 
@@ -30,13 +31,11 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: PersistentMapping
-    tag_to_vid: PersistentMapping
-    vid_to_tag: PersistentMapping
+    tag_to_vid: PersistentBimap[str, ValueIdentity]
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
-        self.tag_to_vid = PersistentMapping()
-        self.vid_to_tag = PersistentMapping()
+        self.tag_to_vid = PersistentBimap()
         self.external_cache_id = 0
 
     def get_new_external_id(self):
@@ -106,21 +105,24 @@ class DumboPersistedCache:
         return cached_value
 
     def update(self, vid: ValueIdentity, value: object):
-        # TODO: value: None should just remove the entry, I think
-        # need to also update tags!
-
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:
                 # assert isinstance(existing_cached_value, CachedValue)
                 existing_cached_value.unlink()
 
-            # TODO: logic to decide whether to store the value at all or not depending
-            # on computational budget.
+            if value is None:
+                del self.storage.vid_to_cached_value[vid]
 
-            cached_value = self.try_create_cached_value(vid, value)
-            if cached_value is not None:
-                self.storage.vid_to_cached_value[vid] = cached_value
+                # Also remove any existing tags.
+                self.storage.tag_to_vid.del_value(vid)
+            else:
+                # TODO: logic to decide whether to store the value at all or not depending
+                # on computational budget.
+
+                cached_value = self.try_create_cached_value(vid, value)
+                if cached_value is not None:
+                    self.storage.vid_to_cached_value[vid] = cached_value
 
     def get_cached_value(self, vid) -> Optional[CachedValue]:
         return self.storage.vid_to_cached_value.get(vid)
@@ -134,13 +136,11 @@ class DumboPersistedCache:
         return cached_value.load()
 
     def tag(self, vid, tag_name):
-        if vid is None and tag_name in self.storage.tag_to_vid:
-            del self.storage.vid_to_tag[self.storage.tag_to_vid[vid]]
-            del self.storage.tag_to_vid[tag_name]
-        elif vid in self.storage.vid_to_cached_value:
-            self.storage.tag_to_vid[tag_name] = vid
-            self.storage.vid_to_tag[vid] = tag_name
-        # TODO: log?
+        if vid is not None and vid not in self.storage.vid_to_cached_value:
+            # TODO: log?
+            return
+
+        self.storage.tag_to_vid.update(tag_name, vid)
 
     def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
-        return self.storage.tag_to_vid.get(tag_name)
+        return self.storage.tag_to_vid.get_value(tag_name)

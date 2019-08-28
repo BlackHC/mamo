@@ -8,6 +8,7 @@ from persistent import Persistent
 KT = TypeVar('KT')  # Key type.
 VT = TypeVar("VT")  # Value type.
 
+
 class Bimap(Generic[KT, VT]):
     def update(self, key: KT, value: VT):
         if key is None and value is None:
