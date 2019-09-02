@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import MutableMapping, Generic, TypeVar
+from typing import MutableMapping, Generic, TypeVar, Optional
 
 from persistent.mapping import PersistentMapping
 from persistent import Persistent
@@ -10,7 +10,7 @@ VT = TypeVar("VT")  # Value type.
 
 
 class Bimap(Generic[KT, VT]):
-    def update(self, key: KT, value: VT):
+    def update(self, key: KT, value: Optional[VT]):
         if key is None and value is None:
             raise ValueError('key and value both None!')
 
@@ -83,7 +83,7 @@ class Bimap(Generic[KT, VT]):
 
 
 @dataclass
-class MappingBimap(Bimap):
+class MappingBimap(Bimap[KT, VT]):
     key_value: MutableMapping
     value_key: MutableMapping
 
@@ -113,11 +113,11 @@ class MappingBimap(Bimap):
         return value in self.value_key
 
 
-class DictBimap(MappingBimap):
+class DictBimap(MappingBimap[KT, VT]):
     def __init__(self):
         super().__init__({}, {})
 
 
-class PersistentBimap(MappingBimap, Persistent):
+class PersistentBimap(MappingBimap[KT, VT], Persistent):
     def __init__(self):
         super().__init__(PersistentMapping(), PersistentMapping())

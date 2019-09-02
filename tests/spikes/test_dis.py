@@ -2,6 +2,8 @@ import dis
 import inspect
 import dis as d2
 
+from dataclasses import dataclass
+
 
 class A:
     class B:
@@ -108,7 +110,7 @@ def extract_call_names(func):
     for i in range(len(instructions)):
         instruction = instructions[i]
         if instruction.opname == 'CALL_FUNCTION':
-            stack_size = 1-dis.stack_effect(instruction.opcode, instruction.arg)
+            stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
             # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
             reversed_qualified_name = []
             j = i - 1
@@ -133,16 +135,55 @@ def extract_call_names(func):
     return called_funcs
 
 
-def local_func_arg2(a,b):
+def local_func_arg2(a, b):
     return a + b
 
 
 def call_local_func_arg2():
     a = 2
     b = 4
-    local_func2(a*b, a+b)
+    local_func2(a * b, a + b)
 
 
 def test_spike_read_module_name():
     assert extract_call_names(call_local_func) == [('local_func',)]
     assert extract_call_names(call_local_func_arg2) == [('local_func2',)]
+
+
+def extract_function_global_loads(func):
+    loads = set()
+
+    instructions = list(reversed(list(dis.get_instructions(func))))
+    while instructions:
+        instruction = instructions.pop()
+        if instruction.opname == 'LOAD_GLOBAL':
+            qualified_name = [instruction.argval]
+
+            # Now try to resolve attribute accesses.
+            while instructions:
+                next_instruction = instructions[-1]
+                if next_instruction.opname in ('LOAD_ATTR', 'LOAD_METHOD'):
+                    instructions.pop()
+                    qualified_name.append(next_instruction.argval)
+                else:
+                    break
+
+            loads.add(tuple(qualified_name))
+
+    return loads
+
+
+def test_spike_extract_globals():
+    assert extract_function_global_loads(call_local_func) == {('local_func',)}
+    assert extract_function_global_loads(call_local_func_arg2) == {('local_func2',)}
+    assert extract_function_global_loads(test_dis_call_local_func) == {('dis', 'dis'), ('call_local_func',)}
+
+    assert extract_function_global_loads(extract_function_global_loads) == {
+        ('reversed',),
+        ('set', ),
+        ('list', ),
+        ('dis', 'get_instructions'),
+        ('tuple', )
+    }
+
+    print(extract_function_global_loads.__code__.co_consts)

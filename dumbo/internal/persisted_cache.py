@@ -78,8 +78,9 @@ class DumboPersistedCache:
 
         self.storage = root.storage
 
-    def close(self):
+    def testing_close(self):
         self.db.close()
+        self.transaction_manager.clearSynchs()
 
     def get_new_external_id(self):
         return self.storage.get_new_external_id()
@@ -135,12 +136,13 @@ class DumboPersistedCache:
         # Load value
         return cached_value.load()
 
-    def tag(self, vid, tag_name):
+    def tag(self, tag_name: str, vid: ValueIdentity):
         if vid is not None and vid not in self.storage.vid_to_cached_value:
             # TODO: log?
             return
 
-        self.storage.tag_to_vid.update(tag_name, vid)
+        with self.transaction_manager:
+            self.storage.tag_to_vid.update(tag_name, vid)
 
     def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
         return self.storage.tag_to_vid.get_value(tag_name)

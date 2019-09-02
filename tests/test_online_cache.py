@@ -54,3 +54,19 @@ def test_doc_updating_same_value_throws():
     vid2 = ValueNameIdentity('test2')
     with pytest.raises(AttributeError):
         online_cache.update(vid2, value)
+
+
+def test_doc_tagging_works():
+    persisted_cache = DummyPersistedCache()
+    online_cache = DumboOnlineCache(persisted_cache)
+
+    vid = ValueNameIdentity('test')
+    value = Value(5)
+    tag_name = 'quack'
+
+    online_cache.update(vid, value)
+    online_cache.tag(tag_name, vid)
+
+    assert online_cache.get_value(vid) is value
+    assert online_cache.get_vid(value) == vid
+    assert online_cache.get_tag_value(tag_name) is value

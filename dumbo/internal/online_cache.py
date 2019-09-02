@@ -1,6 +1,6 @@
 from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity
 from dumbo.internal.persisted_cache import DumboPersistedCache
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dumbo.internal.bimap import DictBimap
 
 
@@ -79,14 +79,14 @@ class DumboOnlineCache:
         if isinstance(vid, ValueCIDIdentity):
             self.persisted_cache.update(vid, value)
 
-    def tag(self, vid, tag_name):
+    def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         if vid is not None and vid not in self.vid_to_value:
             raise ValueError(f"{vid} has not been cached!")
 
-        self.tag_to_vid.update(vid, tag_name)
-        self.persisted_cache.tag(vid, tag_name)
+        self.tag_to_vid.update(tag_name, vid)
+        self.persisted_cache.tag(tag_name, vid)
 
-    def get_tag_value(self, tag_name):
+    def get_tag_value(self, tag_name: str):
         tag_vid = self.tag_to_vid.get_value(tag_name)
         if tag_vid is None:
             tag_vid = self.persisted_cache.get_tag_vid(tag_name)

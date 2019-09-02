@@ -221,7 +221,23 @@ Also, need tests for all the new features!!!
 
 So:
 * [x] add tests for numpy and torch support
-* [ ] add tests for tagging values
+* [x] add tests for tagging values
 
 Tagging def needs more work and a bidirectional wrapper.
+
+* [x] add a bimap
+* [x] collect globals etc from function calls for better dependency checks?
+* [ ] what about constants?
+
+## External names and fingerprints can clash in bad ways
+
+If you use a value without registering it first and then register it later,
+things will break. Do not do that.
+
+TODO:
+* [ ] ensure that we cannot register a value after it is known already.
+
+## Functions cannot be identified by fingerprint. Fingerprints are only for staleness.
+
+If we use function fingerprints, there are no staleness checks possible because different versions of the same function will actually be different.
 

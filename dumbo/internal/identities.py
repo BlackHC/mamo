@@ -29,7 +29,7 @@ class ValueFingerprintIdentity(ValueIdentity):
 @dataclass(unsafe_hash=True)
 class FunctionIdentity(Persistent):
     qualified_name: str
-    hashed_code: int
+    fingerprint: int
 
 
 @dataclass(unsafe_hash=True)

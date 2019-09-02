@@ -25,14 +25,21 @@ def test_persisted_cache_persists():
 
         vid = ValueNameIdentity('test')
         value = testing.Value(1)
+        tag_name = 'duck'
 
         assert cache.get_cached_value(vid) is None
-        cache.update(vid, value)
-        assert cache.get_cached_value(vid).value is value
+        assert cache.get_tag_vid(tag_name) is None
 
-        cache.db.close()
+        cache.update(vid, value)
+        cache.tag(tag_name, vid)
+
+        assert cache.get_cached_value(vid).value is value
+        assert cache.get_tag_vid(tag_name) is vid
+
+        cache.testing_close()
 
         cache = DumboPersistedCache.from_file(db_path)
         assert cache.get_cached_value(vid).value == value
+        assert cache.get_tag_vid(tag_name) == vid
 
-        cache.db.close()
+        cache.testing_close()

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from dumbo.internal import reflection
 from functools import wraps
 
@@ -58,35 +60,53 @@ class Dumbo:
             fingerprint
         )
 
-    def wrap_function(self, func):
-        fid = self._identify_function(func)
+    @staticmethod
+    def wrap_function(func):
+        # This method is a static method, so that dumbo does not need to be initialized.
+        fid = dumbo._identify_function(func) if dumbo is not None else None
 
         @wraps(func)
         def wrapped_func(*args, **kwargs):
-            cid = self._identify_call(fid, args, kwargs)
+            nonlocal fid
+
+            # If dumbo was not initialized before, we might still have to set fid.
+            if fid is None:
+                # Just initialize it with defaults.
+                if dumbo is None:
+                    # TODO: maybe log?
+                    init_dumbo()
+
+                fid = dumbo._identify_function(func)
+
+            cid = dumbo._identify_call(fid, args, kwargs)
             vid = ValueCIDIdentity(cid)
 
             # TODO: logic about whether to load from cache or recompute!
-            memoized_result = self._get_value(vid)
+            memoized_result = dumbo._get_value(vid)
             if memoized_result is not None:
                 return memoized_result
 
             result = func(*args, **kwargs)
             wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-            self.online_cache.update(vid, wrapped_result)
+            dumbo.online_cache.update(vid, wrapped_result)
             return wrapped_result
 
         return wrapped_func
 
-    def register_external_value(self, value, unique_name):
+    def register_external_value(self, unique_name, value):
+        # TODO: add an error here if value already exists within the cache.
         self.online_cache.update(ValueNameIdentity(unique_name), value)
 
-    def tag(self, value, tag_name):
+    def tag(self, tag_name, value):
         # Value should exist in the cache.
-        if not self.online_cache.has_value(value):
-            raise ValueError('Value has not been registered previously!')
-        # Register value
-        self.online_cache.tag(self.online_cache.get_vid(value), tag_name)
+        if value is not None:
+            if not self.online_cache.has_value(value):
+                raise ValueError('Value has not been registered previously!')
+            # Register value
+            self.online_cache.tag(tag_name, self.online_cache.get_vid(value))
+        else:
+            self.online_cache.tag(tag_name, None)
+
 
     def get_tag_value(self, tag_name):
         return self.online_cache.get_tag_value(tag_name)
@@ -94,15 +114,11 @@ class Dumbo:
     def get_external_value(self, unique_name):
         return self._get_value(ValueNameIdentity(unique_name))
 
-    def close(self):
-        # This is for tests only!
-
-        self.persisted_cache.close()
-        self.persisted_cache = None
-        self.online_cache = None
+    def testing_close(self):
+        self.persisted_cache.testing_close()
 
 
-dumbo: Dumbo = None
+dumbo: Optional[Dumbo] = None
 
 
 def init_dumbo(memory_only=True, path=None):
