@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Tuple, FrozenSet
-
-from persistent import Persistent
+from typing import Tuple, FrozenSet, Optional, Generic, TypeVar
 
 
-class ValueIdentity(Persistent):
+T = TypeVar("T")
+
+
+class ValueIdentity:
     def get_external_info(self):
         raise NotImplementedError()
 
@@ -27,13 +28,27 @@ class ValueFingerprintIdentity(ValueIdentity):
 
 
 @dataclass(unsafe_hash=True)
-class FunctionIdentity(Persistent):
+class FunctionIdentity:
     qualified_name: str
+
+
+# We keep this separate from FunctionIdentity, so as to cache by identity
+# and determine staleness using finerprints.
+# (Otherwise, we lack a key to index with.)
+@dataclass(unsafe_hash=True)
+class FunctionFingerprint:
     fingerprint: int
 
 
+# Runtime dependencies.
 @dataclass(unsafe_hash=True)
-class CallIdentity(Persistent):
+class DeepFunctionFingerprint(FunctionFingerprint):
+    global_loads: FrozenSet[Tuple[Tuple[str, ...], ValueIdentity]]
+    func_calls: FrozenSet[Tuple[Tuple[str, ...], Optional[FunctionFingerprint]]]
+
+
+@dataclass(unsafe_hash=True)
+class CallIdentity:
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
     kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
@@ -62,4 +77,13 @@ class ValueCIDIdentity(ValueIdentity):
         return f"{self.cid.fid.qualified_name}{args}"
 
 
+@dataclass
+class StoredValue(Generic[T]):
+    value: T
 
+
+# This is kept by online and persistent cache and might later include more debug info.
+@dataclass
+class StoredResult(StoredValue[T]):
+    value: T
+    func_fingerprint: FunctionFingerprint

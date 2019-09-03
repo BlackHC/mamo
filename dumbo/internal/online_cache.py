@@ -1,4 +1,4 @@
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity
+from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Any, Optional
 from dumbo.internal.bimap import DictBimap
@@ -7,36 +7,36 @@ from dumbo.internal.bimap import DictBimap
 # TODO: to repr method
 class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
-    vid_to_value: Dict[ValueIdentity, Any]
-    id_value_to_vid: Dict[int, ValueIdentity]
+    vid_to_value: Dict[ValueIdentity, StoredValue]
+    value_id_to_vid: Dict[int, ValueIdentity]
     tag_to_vid: DictBimap[str, ValueIdentity]
 
     def __init__(self, persisted_cache):
         self.persisted_cache = persisted_cache
 
         self.vid_to_value = {}
-        self.id_value_to_vid = {}
+        self.value_id_to_vid = {}
         self.tag_to_vid = DictBimap()
 
     def has_value(self, value):
-        return id(value) in self.id_value_to_vid
+        return id(value) in self.value_id_to_vid
 
-    def get_value(self, vid):
+    def get_stored_value(self, vid):
         if vid in self.vid_to_value:
             return self.vid_to_value[vid]
 
-        value = self.persisted_cache.get_value(vid)
-        if value is not None:
-            # Cache the value in the online layer.
-            self.vid_to_value[vid] = value
-            self.id_value_to_vid[id(value)] = vid
+        stored_result = self.persisted_cache.get_stored_result(vid)
+        if stored_result is not None:
+            # Cache the stored_result in the online layer.
+            self.vid_to_value[vid] = stored_result
+            self.value_id_to_vid[id(stored_result.value)] = vid
 
-        return value
+        return stored_result
 
     def get_vid(self, value):
-        return self.id_value_to_vid.get(id(value))
+        return self.value_id_to_vid.get(id(value))
 
-    def update(self, vid: ValueIdentity, value):
+    def update(self, vid: ValueIdentity, stored_value: StoredValue):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
         # This can still fail to be atomic because of bugs
@@ -46,10 +46,10 @@ class DumboOnlineCache:
         existing_value = None
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
-            if existing_value is value:
+            if existing_value is stored_value:
                 return
 
-        existing_vid = self.id_value_to_vid.get(id(value)) if value is not None else None
+        existing_vid = self.value_id_to_vid.get(id(stored_value.value)) if stored_value is not None else None
         if existing_vid is not None:
             if existing_vid is not vid:
                 # ERROR: Value has already been linked to another vid.
@@ -62,13 +62,13 @@ class DumboOnlineCache:
         # Now perform mutations:
         # Unlink existing value.
         if existing_value is not None:
-            del self.id_value_to_vid[id(existing_value)]
+            del self.value_id_to_vid[id(existing_value.value)]
 
         if existing_vid is None:
-            self.id_value_to_vid[id(value)] = vid
+            self.value_id_to_vid[id(stored_value.value)] = vid
 
-        if value is not None:
-            self.vid_to_value[vid] = value
+        if stored_value is not None:
+            self.vid_to_value[vid] = stored_value
         else:
             del self.vid_to_value[vid]
             self.tag_to_vid.del_value(vid)
@@ -77,7 +77,8 @@ class DumboOnlineCache:
         # Fingerprints/hashes can change and named values can be reloaded
         # using initialization code.
         if isinstance(vid, ValueCIDIdentity):
-            self.persisted_cache.update(vid, value)
+            assert isinstance(stored_value, StoredResult)
+            self.persisted_cache.update(vid, stored_value)
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         if vid is not None and vid not in self.vid_to_value:
@@ -86,11 +87,11 @@ class DumboOnlineCache:
         self.tag_to_vid.update(tag_name, vid)
         self.persisted_cache.tag(tag_name, vid)
 
-    def get_tag_value(self, tag_name: str):
+    def get_tag_stored_value(self, tag_name: str):
         tag_vid = self.tag_to_vid.get_value(tag_name)
         if tag_vid is None:
             tag_vid = self.persisted_cache.get_tag_vid(tag_name)
         if tag_vid is None:
             return None
 
-        return self.get_value(tag_vid)
+        return self.get_stored_value(tag_vid)

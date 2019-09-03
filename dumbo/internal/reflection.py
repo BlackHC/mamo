@@ -1,8 +1,19 @@
 import dis
 import hashlib
+import inspect
 import marshal
-from types import FunctionType
 from dataclasses import dataclass
+from types import FunctionType
+import builtins
+
+# Bytecode-extracted features. Independent of runtime and can be cached.
+from typing import FrozenSet, Tuple
+
+
+@dataclass(unsafe_hash=True)
+class FunctionDependencies:
+    global_loads: FrozenSet[Tuple[str, ...]]
+    func_calls: FrozenSet[Tuple[str, ...]]
 
 
 def get_module_name(value):
@@ -46,7 +57,7 @@ def get_func_calls(func: FunctionType):
                 instruction = instructions[j]
                 if instruction.opname == 'LOAD_GLOBAL':
                     reversed_qualified_name.append(instruction.argval)
-                    called_funcs.append(tuple(reversed(reversed_qualified_name)))
+                    called_funcs.add(tuple(reversed(reversed_qualified_name)))
                     break
                 elif instruction.opname in ('LOAD_ATTR',):
                     reversed_qualified_name.append(instruction.argval)
@@ -80,14 +91,14 @@ def get_func_global_loads(func):
     return loads
 
 
-def get_func_hash(func: FunctionType):
+def get_func_fingerprint(func: FunctionType):
     # TODO: neeod to hash/include co_consts, too
     hasher = hashlib.md5(func.__code__.co_code)
     hasher.update(marshal.dumps(func.__code__.co_consts))
     return hasher.digest()
 
 
-def resolve_qualified_name(qualified_name):
+def resolve_qualified_name(qualified_name: Tuple[str, ...]):
     resolved = globals().get(qualified_name[0])
     for attr in qualified_name[1:]:
         if resolved is None:
@@ -96,26 +107,36 @@ def resolve_qualified_name(qualified_name):
     return resolved
 
 
-def resolve_qualified_names(qualified_names: set):
+def resolve_qualified_names(qualified_names: FrozenSet[Tuple[str, ...]]):
     resolved_dict = {}
     for qualified_name in qualified_names:
         resolved_dict[qualified_name] = resolve_qualified_name(qualified_name)
     return resolved_dict
 
 
-def get_runtime_func_fingerprint(func: FunctionType):
+def get_func_deps(func: FunctionType) -> FunctionDependencies:
     # We can cache the globals dependencies and the code hash.
     # Then we need to create fingerprints for all referenced global values
     # And figure out whether we want to include dependencies for functions that are being
     # called.
 
-    # TODO: cache these three
-    func_hash = get_func_hash(func)
     loads = get_func_global_loads(func)
     calls = get_func_calls(func)
 
     loads.difference_update(calls)
 
-    # Resolve globals and calls.
-    # Get signatures for globals
-    # Get runtime signatures for calls.
+    return FunctionDependencies(frozenset(loads), frozenset(calls))
+
+
+def is_func_local(func, local_prefix):
+    module = inspect.getmodule(func)
+    # Python's builtin module does not have a __file__ field.
+    if not hasattr(module, '__file__'):
+        return False
+
+    return module.__file__.startswith(local_prefix)
+
+
+def is_func_builtin(func):
+    module = inspect.getmodule(func)
+    return module is builtins

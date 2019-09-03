@@ -241,3 +241,8 @@ TODO:
 
 If we use function fingerprints, there are no staleness checks possible because different versions of the same function will actually be different.
 
+It's a bit weird that I want to look-up by identity and then retrieve the fingerprint.
+We can change the persistent cache to return a Value, FunctionFingerprint pair.
+And the same with the online cache. 
+
+This is essentially debugging information. This can be expanded to contain information about the call time and circumstances etc.

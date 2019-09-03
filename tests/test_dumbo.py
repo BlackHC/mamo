@@ -42,7 +42,7 @@ def test_dumbo_fib(dumbo_fixture):
     dumbo_fib = dumbo.dumbo(unwrapped_fib)
     result = dumbo_fib(8)
     assert result == 34
-    assert len(main.dumbo.online_cache.id_value_to_vid) == 9
+    assert len(main.dumbo.online_cache.value_id_to_vid) == 9
     assert len(main.dumbo.online_cache.vid_to_value) == 9
 
 
@@ -74,7 +74,7 @@ def test_dumbo_register_external_value(dumbo_fixture):
 
     result = dumbo_fib(magic_number)
 
-    assert main.dumbo.online_cache.id_value_to_vid[id(result)].cid.args_vid[0] == ValueNameIdentity(unique_name)
+    assert main.dumbo.online_cache.value_id_to_vid[id(result)].cid.args_vid[0] == ValueNameIdentity(unique_name)
 
     dumbo.register_external_value(unique_name, None)
 

@@ -2,10 +2,8 @@ import os
 from abc import ABC
 from dataclasses import dataclass
 
-from persistent import Persistent
 
-
-class CachedValue(Persistent):
+class CachedValue:
     def unlink(self):
         # This value is about to not be part of the cache anymore.
         # Deal with it (by removing auxiliary files etc).
@@ -41,7 +39,7 @@ class ExternallyCachedValue(CachedValue, ABC):
 
 @dataclass(unsafe_hash=True)
 class DBCachedValue(CachedValue, ABC):
-    value: object
+    cached_value: object
 
     def load(self):
-        return self.value
+        return self.cached_value

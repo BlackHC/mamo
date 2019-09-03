@@ -34,5 +34,5 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
 
 
 @dataclass(frozen=True)
-class Value:
+class BoxedValue:
     value: int
