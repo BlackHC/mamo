@@ -137,7 +137,9 @@ class DumboPersistedCache:
             return None
 
         # Load value
-        return StoredResult(cached_value.value.load(), cached_value.func_fingerprint)
+        loaded_value = cached_value.value.load()
+        wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
+        return StoredResult(wrapped_value, cached_value.func_fingerprint)
 
     def tag(self, tag_name: str, vid: ValueCIDIdentity):
         if vid is not None and vid not in self.storage.vid_to_cached_value:

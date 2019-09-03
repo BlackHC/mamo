@@ -227,7 +227,7 @@ Tagging def needs more work and a bidirectional wrapper.
 
 * [x] add a bimap
 * [x] collect globals etc from function calls for better dependency checks?
-* [ ] what about constants?
+* [x] what about constants?
 
 ## External names and fingerprints can clash in bad ways
 
@@ -235,7 +235,7 @@ If you use a value without registering it first and then register it later,
 things will break. Do not do that.
 
 TODO:
-* [ ] ensure that we cannot register a value after it is known already.
+* [x] ensure that we cannot register a value after it is known already.
 
 ## Functions cannot be identified by fingerprint. Fingerprints are only for staleness.
 
@@ -245,4 +245,15 @@ It's a bit weird that I want to look-up by identity and then retrieve the finger
 We can change the persistent cache to return a Value, FunctionFingerprint pair.
 And the same with the online cache. 
 
-This is essentially debugging information. This can be expanded to contain information about the call time and circumstances etc.
+This can contain debugging information: this can be expanded to contain information about the call time and circumstances etc.
+
+## Values that are loaded from the persisted cache might not be sufficiently proxy-wrapped.
+
+Only newly computed values are result-wrapped. Cached values that are loaded into the online
+cache through the persisted cache are not wrapped. This ought to be fixed...
+
+* [x] loaded values also need to be result wrapped.
+
+## What's next?
+
+This should be sufficient to start working on reproducing BatchBALD's variance analysis and polishing the API and finding issues. 
