@@ -256,4 +256,20 @@ cache through the persisted cache are not wrapped. This ought to be fixed...
 
 ## What's next?
 
-This should be sufficient to start working on reproducing BatchBALD's variance analysis and polishing the API and finding issues. 
+This should be sufficient to start working on reproducing BatchBALD's variance analysis and polishing the API and finding issues.
+
+## Also, I need an IPython/Jupyter cell magic...
+
+I would like it to capture stores and look at the bytecode to determine which globals to use as inputs. So essentially we create a fake function and register its inputs and outputs.
+
+To perform any of this, we need to compile the cell to bytecode and then examine it.
+
+This won't supported nested cell magics etc sadly though.
+
+STOREs are much harder to track than LOADs because they don't pop the TOS.
+
+I'll just track STORE_GLOBALs for now...
+
+TODOs:
+ 
+* [x] support an IPython cellmagic

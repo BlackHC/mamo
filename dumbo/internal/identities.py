@@ -32,6 +32,11 @@ class FunctionIdentity:
     qualified_name: str
 
 
+@dataclass(unsafe_hash=True)
+class CellIdentity(FunctionIdentity):
+    fingerprint: int
+
+
 # We keep this separate from FunctionIdentity, so as to cache by identity
 # and determine staleness using finerprints.
 # (Otherwise, we lack a key to index with.)

@@ -3,7 +3,7 @@ import hashlib
 import inspect
 import marshal
 from dataclasses import dataclass
-from types import FunctionType
+from types import FunctionType, CodeType
 import builtins
 
 # Bytecode-extracted features. Independent of runtime and can be cached.
@@ -34,11 +34,12 @@ def get_func_qualified_name(func):
     return get_qualified_name(func)
 
 
-def get_func_calls(func: FunctionType):
+# TODO: we need tests for this! (right now it's just tested by the spike code in some way).
+def get_calls(func_or_code: FunctionType):
     # TODOs: support CALL_METHOD and LOAD_METHOD?
     called_funcs = set()
 
-    instructions = list(dis.get_instructions(func))
+    instructions = list(dis.get_instructions(func_or_code))
     for i in range(len(instructions)):
         instruction = instructions[i]
         if instruction.opname == 'CALL_FUNCTION':
@@ -68,10 +69,10 @@ def get_func_calls(func: FunctionType):
     return called_funcs
 
 
-def get_func_global_loads(func):
+def get_global_loads(func_or_code):
     loads = set()
 
-    instructions = list(reversed(list(dis.get_instructions(func))))
+    instructions = list(reversed(list(dis.get_instructions(func_or_code))))
     while instructions:
         instruction = instructions.pop()
         if instruction.opname == 'LOAD_GLOBAL':
@@ -91,15 +92,44 @@ def get_func_global_loads(func):
     return loads
 
 
+def get_global_loads_stores(func_or_code):
+    loads = set()
+    global_stores = set()
+
+    instructions = list(reversed(list(dis.get_instructions(func_or_code))))
+    while instructions:
+        instruction = instructions.pop()
+        if instruction.opname == 'STORE_GLOBAL':
+            global_stores.add(instruction.argval)
+        elif instruction.opname == 'LOAD_GLOBAL':
+            qualified_name = [instruction.argval]
+
+            # Now try to resolve attribute accesses.
+            while instructions:
+                next_instruction = instructions[-1]
+                if next_instruction.opname in ('LOAD_ATTR', 'LOAD_METHOD'):
+                    instructions.pop()
+                    qualified_name.append(next_instruction.argval)
+                else:
+                    break
+
+            loads.add(tuple(qualified_name))
+
+    return loads, global_stores
+
+
+def get_code_object_fingerprint(code_object: CodeType):
+    hash_method = hashlib.md5(code_object.co_code)
+    hash_method.update(marshal.dumps(code_object.co_consts))
+    return hash_method.digest()
+
+
 def get_func_fingerprint(func: FunctionType):
-    # TODO: neeod to hash/include co_consts, too
-    hasher = hashlib.md5(func.__code__.co_code)
-    hasher.update(marshal.dumps(func.__code__.co_consts))
-    return hasher.digest()
+    return get_code_object_fingerprint(func.__code__)
 
 
-def resolve_qualified_name(qualified_name: Tuple[str, ...]):
-    resolved = globals().get(qualified_name[0])
+def resolve_qualified_name(qualified_name: Tuple[str, ...], namespace: dict):
+    resolved = namespace.get(qualified_name[0])
     for attr in qualified_name[1:]:
         if resolved is None:
             break
@@ -107,10 +137,10 @@ def resolve_qualified_name(qualified_name: Tuple[str, ...]):
     return resolved
 
 
-def resolve_qualified_names(qualified_names: FrozenSet[Tuple[str, ...]]):
+def resolve_qualified_names(qualified_names: FrozenSet[Tuple[str, ...]], namespace: dict):
     resolved_dict = {}
     for qualified_name in qualified_names:
-        resolved_dict[qualified_name] = resolve_qualified_name(qualified_name)
+        resolved_dict[qualified_name] = resolve_qualified_name(qualified_name, namespace)
     return resolved_dict
 
 
@@ -120,8 +150,8 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
     # And figure out whether we want to include dependencies for functions that are being
     # called.
 
-    loads = get_func_global_loads(func)
-    calls = get_func_calls(func)
+    loads = get_global_loads(func)
+    calls = get_calls(func)
 
     loads.difference_update(calls)
 

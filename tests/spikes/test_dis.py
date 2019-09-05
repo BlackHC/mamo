@@ -36,6 +36,28 @@ def local_func2():
     return "hello:"
 
 
+def set_global():
+    global global_var
+    global_var = "Hello world"
+
+
+def set_global_obj():
+    # storing into global objects is much more difficult to follow be the TOS is not popped.
+    # so multiple STORE_ATTR can reused the same TOS. (which is more efficient)
+    global global_var
+    global_var = object()
+    global_var.a = "hello"
+    global_var.b = "world"
+
+
+def test_dis_set_global():
+    dis.dis(set_global)
+
+
+def test_dis_set_global_obj():
+    dis.dis(set_global_obj)
+
+
 def dis_local_func():
     dis.get_instructions(local_func)
 

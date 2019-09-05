@@ -110,7 +110,8 @@ class DumboPersistedCache:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:
                 # assert isinstance(existing_cached_value, CachedValue)
-                existing_cached_value.unlink()
+                # TODO: add test cases for unlinking!!!
+                existing_cached_value.value.unlink()
 
             if value is None:
                 del self.storage.vid_to_cached_value[vid]

@@ -1,4 +1,4 @@
-from types import FunctionType
+from types import FunctionType, CodeType
 from typing import Optional, Dict
 
 from dumbo.internal import reflection
@@ -6,7 +6,7 @@ from functools import wraps
 
 # Usually, Pythonistas don't like base classes. They know nothing.
 from dumbo.internal.identities import ValueNameIdentity, ValueFingerprintIdentity, ValueCIDIdentity, FunctionIdentity, \
-    CallIdentity, ValueIdentity, FunctionFingerprint, DeepFunctionFingerprint, StoredResult, StoredValue
+    CallIdentity, ValueIdentity, FunctionFingerprint, DeepFunctionFingerprint, StoredResult, StoredValue, CellIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
@@ -21,9 +21,9 @@ MODULE_EXTENSIONS.default_extension = default_module_extension.DefaultModuleExte
 
 class Dumbo:
     # TODO: use weak dicts!
-    func_deps: Dict[FunctionType, FunctionDependencies]
+    code_object_deps: Dict[CodeType, FunctionDependencies]
     # TODO: make use of this dict!!
-    #vids_deps: Dict[object, ValueIdentity]
+    # vids_deps: Dict[object, ValueIdentity]
     func_fingerprints: Dict[FunctionType, FunctionFingerprint]
 
     online_cache: DumboOnlineCache
@@ -32,7 +32,7 @@ class Dumbo:
     def __init__(self, persisted_cache):
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
-        self.func_deps = {}
+        self.code_object_deps = {}
         self.func_fingerprints = {}
 
     def _get_stored_value(self, vid):
@@ -46,14 +46,36 @@ class Dumbo:
             reflection.get_func_qualified_name(func),
         )
 
-    def _get_func_deps(self, func) -> FunctionDependencies:
-        func_deps = self.func_deps.get(func)
-        if func_deps is None:
-            func_deps = reflection.get_func_deps(func)
-            self.func_deps[func] = func_deps
-        return func_deps
+    def _identify_cell(self, code_object: CodeType) -> FunctionIdentity:
+        return CellIdentity(
+            'cell',
+            reflection.get_code_object_fingerprint(code_object)
+        )
 
-    def _get_function_fingerprint(self, func) -> Optional[FunctionFingerprint]:
+    def _get_code_object_deps(self, code_object) -> FunctionDependencies:
+        code_object_deps = self.code_object_deps.get(code_object)
+        if code_object_deps is None:
+            code_object_deps = reflection.get_func_deps(code_object)
+            self.code_object_deps[code_object] = code_object_deps
+        return code_object_deps
+
+    def _get_deep_fingerprint(self, code_object, namespace):
+        func_deps = self._get_code_object_deps(code_object)
+
+        resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
+        resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
+
+        global_vids = {qn: self._identify_value(resolved_global) if resolved_global else None for
+                       qn, resolved_global in resolved_globals.items()}
+        global_funcs = {qn: self._identify_function(resolved_func) if resolved_func else None for
+                        qn, resolved_func in resolved_funcs.items()}
+
+        return DeepFunctionFingerprint(
+            reflection.get_code_object_fingerprint(code_object),
+            frozenset(global_vids.items()),
+            frozenset(global_funcs.items()))
+
+    def _get_function_fingerprint(self, func: FunctionType) -> Optional[FunctionFingerprint]:
         func_fingerprint = self.func_fingerprints.get(func)
         if func_fingerprint is not None:
             return func_fingerprint
@@ -62,20 +84,7 @@ class Dumbo:
             func_fingerprint = None
         # TODO: allow to set a localprefix
         elif reflection.is_func_local(func, ''):
-            func_deps = self._get_func_deps(func)
-
-            resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads)
-            resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls)
-
-            global_vids = {qn: self._identify_value(resolved_global) if resolved_global else None for
-                           qn, resolved_global in resolved_globals.items()}
-            global_funcs = {qn: self._identify_function(resolved_func) if resolved_func else None for
-                            qn, resolved_func in resolved_funcs.items()}
-
-            func_fingerprint = DeepFunctionFingerprint(
-                reflection.get_func_fingerprint(func),
-                frozenset(global_vids.items()),
-                frozenset(global_funcs.items()))
+            func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
         else:
             func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
 
@@ -134,7 +143,7 @@ class Dumbo:
                 assert isinstance(memoized_result, StoredResult)
                 if func_fingerprint != memoized_result.func_fingerprint:
                     # TODO: log
-                    print(f'{cid} is stale!'
+                    print(f'{vid.cid} is stale!'
                           f'\t{func_fingerprint}\nvs\n\t{memoized_result.func_fingerprint}')
                 return memoized_result.value
 
@@ -144,6 +153,45 @@ class Dumbo:
             return wrapped_result
 
         return wrapped_func
+
+    def run_cell(self, cell: str, user_ns: dict):
+        # TODO: wrap in a function and execute, so we need explicit globals for stores?
+        wrapped_in_function = "def cell_function():\n\t" + '\n\t'.join(cell.split('\n'))
+
+        local_ns = {}
+        exec(wrapped_in_function, user_ns, local_ns)
+        cell_function = local_ns['cell_function']
+        code_object = cell_function.__code__
+
+        cell_id = self._identify_cell(code_object)
+
+        loads, global_stores = reflection.get_global_loads_stores(code_object)
+
+        cid = self._identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
+        vid = ValueCIDIdentity(cid)
+
+        # TODO: These fingerprints are not cached! Do we want to cache them?
+        cell_fingerprint = self._get_deep_fingerprint(code_object, user_ns)
+
+        # TODO: logic about whether to load from cache or recompute!
+        memoized_result = dumbo._get_stored_value(vid)
+        if memoized_result is not None:
+            assert isinstance(memoized_result, StoredResult)
+            if cell_fingerprint != memoized_result.func_fingerprint:
+                # TODO: log
+                print(f'{vid.cid} is stale!'
+                      f'\t{cell_fingerprint}\nvs\n\t{memoized_result.func_fingerprint}')
+            assert isinstance(memoized_result.value, dict)
+            user_ns.update(memoized_result.value)
+        else:
+            cell_function()
+
+            # Retrieve stores.
+            # TODO: Need to support nested results for this?!!!
+            wrapped_results = {name: MODULE_EXTENSIONS.wrap_return_value(user_ns[name]) for name in global_stores}
+
+            dumbo.online_cache.update(vid, StoredResult(wrapped_results, cell_fingerprint))
+            user_ns.update(wrapped_results)
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.

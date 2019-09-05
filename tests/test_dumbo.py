@@ -12,6 +12,9 @@ from dumbo.internal.identities import ValueNameIdentity
 
 from pytest import fixture
 
+from tests.testing import BoxedValue
+
+
 @fixture
 def dumbo_fixture():
     if main.dumbo is not None:
@@ -96,6 +99,29 @@ def test_dumbo_tag(dumbo_fixture):
     dumbo.tag(tag_name, None)
 
     assert dumbo.get_tag_value(tag_name) is None
+
+
+def test_run_cell(dumbo_fixture):
+    class Dummy:
+        pass
+
+    user_ns_obj = Dummy()
+    user_ns_obj.var = None
+    user_ns = user_ns_obj.__dict__
+
+    user_ns_obj.boxed = BoxedValue('hello')
+    cell_code = 'global var; var = boxed'
+
+    main.dumbo.run_cell(cell_code, user_ns)
+
+    assert user_ns_obj.var == user_ns_obj.boxed
+    assert user_ns_obj.var is not user_ns_obj.boxed
+
+    var_old = user_ns_obj.var
+
+    main.dumbo.run_cell(cell_code, user_ns)
+
+    assert user_ns_obj.var is var_old
 
 
 # @dumbo.dumbo()
