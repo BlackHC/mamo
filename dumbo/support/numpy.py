@@ -36,7 +36,7 @@ class NumpyModuleExtension(ModuleExtension):
 
         return NumpyExternallyCachedValue(external_path)
 
-    def wrap_return_value(self, value, wrap_return_value):
+    def wrap_return_value(self, value):
         # We also make value readonly.
         value.setflags(write=False)
         return value.view()

@@ -16,7 +16,7 @@ from dumbo.internal import default_module_extension
 # Install the default module extension.
 from dumbo.internal.reflection import FunctionDependencies
 
-MODULE_EXTENSIONS.default_extension = default_module_extension.DefaultModuleExtension()
+MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
 
 
 class Dumbo:
@@ -181,17 +181,20 @@ class Dumbo:
                 # TODO: log
                 print(f'{vid.cid} is stale!'
                       f'\t{cell_fingerprint}\nvs\n\t{memoized_result.func_fingerprint}')
-            assert isinstance(memoized_result.value, dict)
-            user_ns.update(memoized_result.value)
+            assert isinstance(memoized_result.value, tuple)
+            user_ns.update(zip(*memoized_result.value))
         else:
             cell_function()
 
             # Retrieve stores.
             # TODO: Need to support nested results for this?!!!
-            wrapped_results = {name: MODULE_EXTENSIONS.wrap_return_value(user_ns[name]) for name in global_stores}
+            results = {name: user_ns[name] for name in global_stores}
+            unzipped_results = tuple(zip(*results.items()))
+            # This will take care of each value separately. (At least for wrapping!!)
+            wrapped_results = MODULE_EXTENSIONS.wrap_return_value(unzipped_results)
 
             dumbo.online_cache.update(vid, StoredResult(wrapped_results, cell_fingerprint))
-            user_ns.update(wrapped_results)
+            user_ns.update(zip(*wrapped_results))
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.

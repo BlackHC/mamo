@@ -3,7 +3,7 @@ from typing import Optional
 
 import hashlib
 
-from dumbo.api_support import DBCachedValue, ExternallyCachedValue, MAX_FINGERPRINT_LENGTH, ModuleExtension, \
+from dumbo.api_support import DBCachedValue, ExternallyCachedValue, ModuleExtension, \
     ExternallyCachedFilePath, CachedValue, MODULE_EXTENSIONS
 
 
@@ -37,7 +37,7 @@ class TorchModuleExtension(ModuleExtension):
 
         return TorchExternallyCachedValue(external_path)
 
-    def wrap_return_value(self, value: th.Tensor, wrap_return_value):
+    def wrap_return_value(self, value: th.Tensor):
         return value.view(value.size())
 
 

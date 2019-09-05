@@ -8,7 +8,10 @@ from dumbo.internal.reflection import get_module_name
 MAX_FINGERPRINT_LENGTH = 1024
 
 
+@dataclass
 class ModuleExtension:
+    module_registry: 'ModuleRegistry' = None
+
     def supports(self, value) -> bool:
         raise NotImplementedError()
 
@@ -24,7 +27,7 @@ class ModuleExtension:
         """Returns None if the value couldn't be cached."""
         raise NotImplementedError()
 
-    def wrap_return_value(self, value, wrap_return_value):
+    def wrap_return_value(self, value):
         """Returns None if the value couldn't be wrapped."""
         raise NotImplementedError()
 
@@ -37,8 +40,13 @@ class ModuleRegistry:
     default_extension: ModuleExtension = None
     store: Dict[str, ModuleExtension] = field(default_factory=dict, init=False)
 
-    def add(self, module, handler):
+    def set_default_extension(self, handler: ModuleExtension):
+        self.default_extension = handler
+        handler.module_registry = self
+
+    def add(self, module, handler: ModuleExtension):
         self.store[module.__name__] = handler
+        handler.module_registry = self
 
     def get(self, value) -> ModuleExtension:
         module_name = get_module_name(value)
@@ -98,10 +106,10 @@ class ModuleRegistry:
         extension = self.get(value)
         return_value = None
         if extension is not None and extension.supports(value):
-            return_value = extension.wrap_return_value(value, self.wrap_return_value)
+            return_value = extension.wrap_return_value(value)
 
         if return_value is None:
-            return_value = self.default_extension.wrap_return_value(value, self.wrap_return_value)
+            return_value = self.default_extension.wrap_return_value(value)
 
         if return_value is None:
             return_value = value

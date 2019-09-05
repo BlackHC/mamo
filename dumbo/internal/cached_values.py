@@ -1,6 +1,7 @@
 import os
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import Optional
 
 
 class CachedValue:
@@ -18,6 +19,13 @@ class ExternallyCachedFilePath:
     path: str
     external_id: str
     vid_info: str
+
+    @staticmethod
+    def for_tuple_item(path: 'Optional[ExternallyCachedFilePath]', i: int):
+        if path is None:
+            return None
+
+        return replace(path, external_id=path.external_id + f'_{i}')
 
     def build(self, cache_info, ext):
         return os.path.join(
