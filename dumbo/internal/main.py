@@ -229,9 +229,10 @@ class Dumbo:
 dumbo: Optional[Dumbo] = None
 
 
-def init_dumbo(memory_only=True, path=None):
+def init_dumbo(memory_only=True, path: Optional[str] = None, externally_cached_path: Optional[str] = None):
     global dumbo
     assert dumbo is None
 
-    persisted_cache = DumboPersistedCache.from_memory() if memory_only else DumboPersistedCache.from_file(path)
+    persisted_cache = DumboPersistedCache.from_memory() if memory_only \
+        else DumboPersistedCache.from_file(path, externally_cached_path)
     dumbo = Dumbo(persisted_cache)

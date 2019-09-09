@@ -273,9 +273,17 @@ I'll just track STORE_GLOBALs for now...
 TODOs:
  
 * [x] support an IPython cellmagic
-* [ ] add support for a StoredDict or something that allows for wrapping of items
+* [x] add support for a StoredDict or something that allows for wrapping of items
 
 ## What's the problem with storing cell results in a dict?
 
 We have custom code to wrap dict results which is not mirrored in PersistedCache.
 This is a bug. Moreover, it would be nice to be able to return multiple results in general.
+
+Resolution: support tuples as special type everywhere and apply all module extensions separately to each tuple item.
+
+## Polish the API with some toy examples.
+
+TODO:
+
+* [x] support a separate path for externally cached files

@@ -17,8 +17,8 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.vid_to_cached_value = {}
         self.tag_to_vid = {}
 
-    def try_create_cached_value(self, vid, value):
-        return dumbo.internal.cached_values.DBCachedValue(value)
+    def try_create_cached_value(self, vid, stored_result):
+        return dumbo.internal.cached_values.DBCachedValue(stored_result)
 
     def update(self, vid, value):
         self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value)

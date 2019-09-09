@@ -12,6 +12,8 @@ from dumbo.internal.module_extension import ModuleExtension, MAX_FINGERPRINT_LEN
 
 import hashlib
 
+from dumbo.internal.reflection import get_type_qualified_name
+
 MAX_PICKLE_SIZE = 2 ** 30
 
 
@@ -80,7 +82,7 @@ class DefaultModuleExtension(ModuleExtension):
                 print(err)
                 return None
 
-            external_path = external_path_builder.build(type(value), 'pickle')
+            external_path = external_path_builder.build(get_type_qualified_name(value), 'pickle')
             with open(external_path, "bw") as external_file:
                 external_file.write(pickled_bytes)
 
