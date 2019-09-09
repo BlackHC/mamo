@@ -70,13 +70,15 @@ class DumboPersistedCache:
     def __init__(self, db: DB, path: Optional[str], externally_cached_path: Optional[str]):
         self.db = db
         self.path = os.path.abspath(path) if path else path
-        self.externally_cached_path = os.path.abspath(externally_cached_path) if externally_cached_path else externally_cached_path
+        self.externally_cached_path = (
+            os.path.abspath(externally_cached_path) if externally_cached_path else externally_cached_path
+        )
         self.transaction_manager = TransactionManager()
 
         connection = db.open(self.transaction_manager)
         root = connection.root
 
-        if not hasattr(root, 'storage'):
+        if not hasattr(root, "storage"):
             with self.transaction_manager:
                 root.storage = DumboPersistedCacheStorage()
 
@@ -89,7 +91,9 @@ class DumboPersistedCache:
     def get_new_external_id(self):
         return self.storage.get_new_external_id()
 
-    def try_create_cached_value(self, vid: ValueCIDIdentity, stored_result: StoredResult) -> Optional[StoredResult[CachedValue]]:
+    def try_create_cached_value(
+        self, vid: ValueCIDIdentity, stored_result: StoredResult
+    ) -> Optional[StoredResult[CachedValue]]:
         estimated_size = MODULE_EXTENSIONS.get_estimated_size(stored_result.value)
         if estimated_size is None:
             # TODO log?
@@ -100,8 +104,7 @@ class DumboPersistedCache:
         # However, if we are memory-only, we don't cache in external files.
         if estimated_size > MAX_DB_CACHED_VALUE_SIZE and self.externally_cached_path is not None:
             external_path_builder = ExternallyCachedFilePath(
-                self.externally_cached_path, self.get_new_external_id(),
-                vid.get_external_info()
+                self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
             )
 
         cached_value = MODULE_EXTENSIONS.cache_value(stored_result.value, external_path_builder)

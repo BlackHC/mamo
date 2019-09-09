@@ -6,8 +6,7 @@ import objproxies
 
 from typing import Optional, Tuple
 
-from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, \
-    DBCachedValue
+from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, DBCachedValue
 from dumbo.internal.module_extension import ModuleExtension, MAX_FINGERPRINT_LENGTH, MODULE_EXTENSIONS
 
 import hashlib
@@ -70,9 +69,13 @@ class DefaultModuleExtension(ModuleExtension):
     def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]):
         if isinstance(value, tuple):
             return CachedTuple(
-                tuple(self.module_registry.cache_value(
-                    item, ExternallyCachedFilePath.for_tuple_item(external_path_builder, i))
-                      for i, item in enumerate(value)))
+                tuple(
+                    self.module_registry.cache_value(
+                        item, ExternallyCachedFilePath.for_tuple_item(external_path_builder, i)
+                    )
+                    for i, item in enumerate(value)
+                )
+            )
 
         if external_path_builder is not None:
             try:
@@ -82,7 +85,7 @@ class DefaultModuleExtension(ModuleExtension):
                 print(err)
                 return None
 
-            external_path = external_path_builder.build(get_type_qualified_name(value), 'pickle')
+            external_path = external_path_builder.build(get_type_qualified_name(value), "pickle")
             with open(external_path, "bw") as external_file:
                 external_file.write(pickled_bytes)
 

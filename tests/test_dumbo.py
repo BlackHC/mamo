@@ -69,7 +69,7 @@ def test_dumbo_register_external_value(dumbo_fixture):
     dumbo_fib = dumbo.dumbo(unwrapped_fib)
 
     magic_number = 15
-    unique_name = 'magic_number'
+    unique_name = "magic_number"
 
     dumbo.register_external_value(unique_name, magic_number)
 
@@ -88,7 +88,7 @@ def test_dumbo_tag(dumbo_fixture):
     global dumbo_fib
     dumbo_fib = dumbo.dumbo(unwrapped_fib)
     result = dumbo_fib(10)
-    tag_name = 'duck'
+    tag_name = "duck"
 
     assert dumbo.get_tag_value(tag_name) is None
 
@@ -109,8 +109,8 @@ def test_run_cell(dumbo_fixture):
     user_ns_obj.var = None
     user_ns = user_ns_obj.__dict__
 
-    user_ns_obj.boxed = BoxedValue('hello')
-    cell_code = 'global var; var = boxed'
+    user_ns_obj.boxed = BoxedValue("hello")
+    cell_code = "global var; var = boxed"
 
     main.dumbo.run_cell(cell_code, user_ns)
 

@@ -55,7 +55,7 @@ class DumboOnlineCache:
                 # ERROR: Value has already been linked to another vid.
                 raise AttributeError(
                     f"{vid} has same value as {existing_vid}!"
-                    "We follow an \"each computation, different result\" policy."
+                    'We follow an "each computation, different result" policy.'
                     "This makes tracking possible."
                 )
 

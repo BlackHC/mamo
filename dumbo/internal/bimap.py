@@ -5,14 +5,14 @@ from persistent.mapping import PersistentMapping
 from persistent import Persistent
 
 
-KT = TypeVar('KT')  # Key type.
+KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
 
 
 class Bimap(Generic[KT, VT]):
     def update(self, key: KT, value: Optional[VT]):
         if key is None and value is None:
-            raise ValueError('key and value both None!')
+            raise ValueError("key and value both None!")
 
         if key is None:
             self.del_value(value)
@@ -36,10 +36,10 @@ class Bimap(Generic[KT, VT]):
     def put_key_value(self, key: KT, value: VT):
         if key is None or value is None:
             if key is not None:
-                raise ValueError('Value is None! Use update instead!')
+                raise ValueError("Value is None! Use update instead!")
             if value is not None:
-                raise ValueError('Key is None! Use update instead!')
-            raise ValueError('Key and value are None! Use update instead!')
+                raise ValueError("Key is None! Use update instead!")
+            raise ValueError("Key and value are None! Use update instead!")
 
         self._put_key_value(key, value)
 

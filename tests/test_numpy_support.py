@@ -75,4 +75,3 @@ def test_add_np_persistent(size):
 
         dumbo.main.dumbo.testing_close()
         dumbo.main.dumbo = None
-

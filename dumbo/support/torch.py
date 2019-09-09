@@ -3,8 +3,14 @@ from typing import Optional
 
 import hashlib
 
-from dumbo.api_support import DBCachedValue, ExternallyCachedValue, ModuleExtension, \
-    ExternallyCachedFilePath, CachedValue, MODULE_EXTENSIONS
+from dumbo.api_support import (
+    DBCachedValue,
+    ExternallyCachedValue,
+    ModuleExtension,
+    ExternallyCachedFilePath,
+    CachedValue,
+    MODULE_EXTENSIONS,
+)
 
 
 # TODO: does this all work for cuda tensors????
@@ -25,12 +31,13 @@ class TorchModuleExtension(ModuleExtension):
     def get_estimated_size(self, value: th.Tensor) -> Optional[int]:
         return value.numel() * value.element_size()
 
-    def cache_value(self, value: th.Tensor, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[
-        CachedValue]:
+    def cache_value(
+        self, value: th.Tensor, external_path_builder: Optional[ExternallyCachedFilePath]
+    ) -> Optional[CachedValue]:
         if external_path_builder is None:
             return DBCachedValue(value)
 
-        shape_info = '_'.join(map(str, value.shape))
+        shape_info = "_".join(map(str, value.shape))
         external_path = external_path_builder.build(shape_info, "pth")
 
         th.save(value, external_path)

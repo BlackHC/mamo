@@ -10,7 +10,7 @@ MAX_FINGERPRINT_LENGTH = 1024
 
 @dataclass
 class ModuleExtension:
-    module_registry: 'ModuleRegistry' = None
+    module_registry: "ModuleRegistry" = None
 
     def supports(self, value) -> bool:
         raise NotImplementedError()
@@ -81,8 +81,7 @@ class ModuleRegistry:
             estimated_size = self.default_extension.get_estimated_size(value)
         return estimated_size
 
-    def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[
-        CachedValue]:
+    def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         extension = self.get(value)
         cached_value = None
         if extension is not None and extension.supports(value):

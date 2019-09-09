@@ -42,7 +42,7 @@ def get_calls(func_or_code: FunctionType):
     instructions = list(dis.get_instructions(func_or_code))
     for i in range(len(instructions)):
         instruction = instructions[i]
-        if instruction.opname == 'CALL_FUNCTION':
+        if instruction.opname == "CALL_FUNCTION":
             # + 1 as we ignore the return value that will be pushed onto the stack.
             stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
             # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
@@ -56,11 +56,11 @@ def get_calls(func_or_code: FunctionType):
 
             while j >= 0:
                 instruction = instructions[j]
-                if instruction.opname == 'LOAD_GLOBAL':
+                if instruction.opname == "LOAD_GLOBAL":
                     reversed_qualified_name.append(instruction.argval)
                     called_funcs.add(tuple(reversed(reversed_qualified_name)))
                     break
-                elif instruction.opname in ('LOAD_ATTR',):
+                elif instruction.opname in ("LOAD_ATTR",):
                     reversed_qualified_name.append(instruction.argval)
                 else:
                     break
@@ -75,13 +75,13 @@ def get_global_loads(func_or_code):
     instructions = list(reversed(list(dis.get_instructions(func_or_code))))
     while instructions:
         instruction = instructions.pop()
-        if instruction.opname == 'LOAD_GLOBAL':
+        if instruction.opname == "LOAD_GLOBAL":
             qualified_name = [instruction.argval]
 
             # Now try to resolve attribute accesses.
             while instructions:
                 next_instruction = instructions[-1]
-                if next_instruction.opname in ('LOAD_ATTR', 'LOAD_METHOD'):
+                if next_instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
                     instructions.pop()
                     qualified_name.append(next_instruction.argval)
                 else:
@@ -99,15 +99,15 @@ def get_global_loads_stores(func_or_code):
     instructions = list(reversed(list(dis.get_instructions(func_or_code))))
     while instructions:
         instruction = instructions.pop()
-        if instruction.opname == 'STORE_GLOBAL':
+        if instruction.opname == "STORE_GLOBAL":
             global_stores.add(instruction.argval)
-        elif instruction.opname == 'LOAD_GLOBAL':
+        elif instruction.opname == "LOAD_GLOBAL":
             qualified_name = [instruction.argval]
 
             # Now try to resolve attribute accesses.
             while instructions:
                 next_instruction = instructions[-1]
-                if next_instruction.opname in ('LOAD_ATTR', 'LOAD_METHOD'):
+                if next_instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
                     instructions.pop()
                     qualified_name.append(next_instruction.argval)
                 else:
@@ -161,7 +161,7 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
 def is_func_local(func, local_prefix):
     module = inspect.getmodule(func)
     # Python's builtin module does not have a __file__ field.
-    if not hasattr(module, '__file__'):
+    if not hasattr(module, "__file__"):
         return False
 
     return module.__file__.startswith(local_prefix)

@@ -5,7 +5,6 @@ from dumbo.internal import main
 
 @magics_class
 class DumboMagics(Magics):
-
     @cell_magic
     def dumbo(self, line, cell):
         "dumbo cell wrapper, only tracks global stores!"

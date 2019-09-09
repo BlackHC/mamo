@@ -82,7 +82,7 @@ def test_dis_load_global():
 def is_function_local(func, local_prefix):
     module = inspect.getmodule(func)
     # Python's builtin module does not have a __file__ field.
-    if not hasattr(module, '__file__'):
+    if not hasattr(module, "__file__"):
         return False
 
     return module.__file__.startswith(local_prefix)
@@ -131,7 +131,7 @@ def extract_call_names(func):
     instructions = list(dis.get_instructions(func))
     for i in range(len(instructions)):
         instruction = instructions[i]
-        if instruction.opname == 'CALL_FUNCTION':
+        if instruction.opname == "CALL_FUNCTION":
             stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
             # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
             reversed_qualified_name = []
@@ -144,11 +144,11 @@ def extract_call_names(func):
 
             while j >= 0:
                 instruction = instructions[j]
-                if instruction.opname == 'LOAD_GLOBAL':
+                if instruction.opname == "LOAD_GLOBAL":
                     reversed_qualified_name.append(instruction.argval)
                     called_funcs.append(tuple(reversed(reversed_qualified_name)))
                     break
-                elif instruction.opname == 'LOAD_ATTR':
+                elif instruction.opname == "LOAD_ATTR":
                     reversed_qualified_name.append(instruction.argval)
                 else:
                     break
@@ -168,8 +168,8 @@ def call_local_func_arg2():
 
 
 def test_spike_read_module_name():
-    assert extract_call_names(call_local_func) == [('local_func',)]
-    assert extract_call_names(call_local_func_arg2) == [('local_func2',)]
+    assert extract_call_names(call_local_func) == [("local_func",)]
+    assert extract_call_names(call_local_func_arg2) == [("local_func2",)]
 
 
 def extract_function_global_loads(func):
@@ -178,13 +178,13 @@ def extract_function_global_loads(func):
     instructions = list(reversed(list(dis.get_instructions(func))))
     while instructions:
         instruction = instructions.pop()
-        if instruction.opname == 'LOAD_GLOBAL':
+        if instruction.opname == "LOAD_GLOBAL":
             qualified_name = [instruction.argval]
 
             # Now try to resolve attribute accesses.
             while instructions:
                 next_instruction = instructions[-1]
-                if next_instruction.opname in ('LOAD_ATTR', 'LOAD_METHOD'):
+                if next_instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
                     instructions.pop()
                     qualified_name.append(next_instruction.argval)
                 else:
@@ -196,16 +196,16 @@ def extract_function_global_loads(func):
 
 
 def test_spike_extract_globals():
-    assert extract_function_global_loads(call_local_func) == {('local_func',)}
-    assert extract_function_global_loads(call_local_func_arg2) == {('local_func2',)}
-    assert extract_function_global_loads(test_dis_call_local_func) == {('dis', 'dis'), ('call_local_func',)}
+    assert extract_function_global_loads(call_local_func) == {("local_func",)}
+    assert extract_function_global_loads(call_local_func_arg2) == {("local_func2",)}
+    assert extract_function_global_loads(test_dis_call_local_func) == {("dis", "dis"), ("call_local_func",)}
 
     assert extract_function_global_loads(extract_function_global_loads) == {
-        ('reversed',),
-        ('set', ),
-        ('list', ),
-        ('dis', 'get_instructions'),
-        ('tuple', )
+        ("reversed",),
+        ("set",),
+        ("list",),
+        ("dis", "get_instructions"),
+        ("tuple",),
     }
 
     print(extract_function_global_loads.__code__.co_consts)

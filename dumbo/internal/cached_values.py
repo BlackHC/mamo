@@ -21,17 +21,14 @@ class ExternallyCachedFilePath:
     vid_info: str
 
     @staticmethod
-    def for_tuple_item(path: 'Optional[ExternallyCachedFilePath]', i: int):
+    def for_tuple_item(path: "Optional[ExternallyCachedFilePath]", i: int):
         if path is None:
             return None
 
-        return replace(path, external_id=path.external_id + f'_{i}')
+        return replace(path, external_id=path.external_id + f"_{i}")
 
     def build(self, cache_info, ext):
-        return os.path.join(
-            self.path,
-            f'{self.vid_info}_{cache_info}_{self.external_id}.{ext}'
-        )
+        return os.path.join(self.path, f"{self.vid_info}_{cache_info}_{self.external_id}.{ext}")
 
 
 @dataclass(unsafe_hash=True)
@@ -39,7 +36,7 @@ class ExternallyCachedValue(CachedValue, ABC):
     path: str
 
     def unlink(self):
-        unlinked_path = self.path + '.unlinked'
+        unlinked_path = self.path + ".unlinked"
         # TODO: shall we pass the vid as argument and store it in a file next to
         # the unlinked entry?
         os.rename(self.path, unlinked_path)
