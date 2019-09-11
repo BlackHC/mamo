@@ -49,7 +49,7 @@ class FunctionFingerprint:
 @dataclass(unsafe_hash=True)
 class DeepFunctionFingerprint(FunctionFingerprint):
     global_loads: FrozenSet[Tuple[Tuple[str, ...], ValueIdentity]]
-    func_calls: FrozenSet[Tuple[Tuple[str, ...], Optional[FunctionFingerprint]]]
+    func_calls: FrozenSet[Tuple[Tuple[str, ...], Optional[Tuple[FunctionIdentity, FunctionFingerprint]]]]
 
 
 @dataclass(unsafe_hash=True)

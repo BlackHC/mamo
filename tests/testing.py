@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from _pytest.fixtures import fixture
+
+import dumbo
 import dumbo.internal.cached_values
-from dumbo.internal import persisted_cache
+from dumbo.internal import persisted_cache, main
 from dumbo.internal.identities import ValueIdentity
 
 
@@ -36,3 +39,17 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
 @dataclass(frozen=True)
 class BoxedValue:
     value: int
+
+
+@fixture
+def dumbo_fixture():
+    if main.dumbo is not None:
+        main.dumbo.testing_close()
+        main.dumbo = None
+
+    dumbo.init_dumbo()
+
+    yield main.dumbo
+
+    main.dumbo.testing_close()
+    main.dumbo = None

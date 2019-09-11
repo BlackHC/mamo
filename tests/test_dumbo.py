@@ -1,33 +1,13 @@
 from types import FunctionType
 
 import dumbo
-import time
-import dumbo.internal.stopwatch_context as swc
-import numpy as np
-from dumbo.internal import reflection
 from dumbo.internal import main
 
 # Here, we just assume dumbo as general memoization library.
 from dumbo.internal.identities import ValueNameIdentity
 
-from pytest import fixture
-
 from tests.testing import BoxedValue
-
-
-@fixture
-def dumbo_fixture():
-    if main.dumbo is not None:
-        main.dumbo.testing_close()
-        main.dumbo = None
-
-    dumbo.init_dumbo()
-
-    yield main.dumbo
-
-    main.dumbo.testing_close()
-    main.dumbo = None
-
+from tests.testing import dumbo_fixture
 
 dumbo_fib: FunctionType = None
 

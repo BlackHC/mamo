@@ -35,7 +35,6 @@ class Dumbo:
     code_object_deps: Dict[CodeType, FunctionDependencies]
     # TODO: make use of this dict!!
     # vids_deps: Dict[object, ValueIdentity]
-    func_fingerprints: Dict[FunctionType, FunctionFingerprint]
     # If not None, allows for deep function fingerprinting.
     deep_fingerprint_source_prefix: Optional[str]
 
@@ -46,7 +45,6 @@ class Dumbo:
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
         self.code_object_deps = {}
-        self.func_fingerprints = {}
         self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
 
     def _get_stored_value(self, vid):
@@ -79,7 +77,8 @@ class Dumbo:
             for qn, resolved_global in resolved_globals.items()
         }
         global_funcs = {
-            qn: self._identify_function(resolved_func) if resolved_func else None
+            qn: (self._identify_function(resolved_func),
+                 self._get_function_fingerprint(resolved_func)) if resolved_func else None
             for qn, resolved_func in resolved_funcs.items()
         }
 
@@ -90,18 +89,14 @@ class Dumbo:
         )
 
     def _get_function_fingerprint(self, func: FunctionType) -> Optional[FunctionFingerprint]:
-        func_fingerprint = self.func_fingerprints.get(func)
-        if func_fingerprint is not None:
-            return func_fingerprint
-
         if reflection.is_func_builtin(func):
             func_fingerprint = None
-        elif self.deep_fingerprint_source_prefix is not None and reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
+        elif self.deep_fingerprint_source_prefix is not None and reflection.is_func_local(func,
+                                                                                          self.deep_fingerprint_source_prefix):
             func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
         else:
             func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
 
-        self.func_fingerprints[func] = func_fingerprint
         return func_fingerprint
 
     def _identify_call(self, fid, args, kwargs) -> CallIdentity:
