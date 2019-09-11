@@ -36,15 +36,18 @@ class Dumbo:
     # TODO: make use of this dict!!
     # vids_deps: Dict[object, ValueIdentity]
     func_fingerprints: Dict[FunctionType, FunctionFingerprint]
+    # If not None, allows for deep function fingerprinting.
+    deep_fingerprint_source_prefix: Optional[str]
 
     online_cache: DumboOnlineCache
     persisted_cache: DumboPersistedCache
 
-    def __init__(self, persisted_cache):
+    def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str]):
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
         self.code_object_deps = {}
         self.func_fingerprints = {}
+        self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
 
     def _get_stored_value(self, vid):
         return self.online_cache.get_stored_value(vid)
@@ -93,8 +96,7 @@ class Dumbo:
 
         if reflection.is_func_builtin(func):
             func_fingerprint = None
-        # TODO: allow to set a localprefix
-        elif reflection.is_func_local(func, ""):
+        elif self.deep_fingerprint_source_prefix is not None and reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
             func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
         else:
             func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
@@ -237,7 +239,11 @@ class Dumbo:
 dumbo: Optional[Dumbo] = None
 
 
-def init_dumbo(memory_only=True, path: Optional[str] = None, externally_cached_path: Optional[str] = None):
+def init_dumbo(memory_only=True,
+               path: Optional[str] = None,
+               externally_cached_path: Optional[str] = None,
+               # By default, we use deep fingerprints everywhere for now.
+               deep_fingerprint_source_prefix: Optional[str] = ""):
     global dumbo
     assert dumbo is None
 
@@ -246,4 +252,4 @@ def init_dumbo(memory_only=True, path: Optional[str] = None, externally_cached_p
         if memory_only
         else DumboPersistedCache.from_file(path, externally_cached_path)
     )
-    dumbo = Dumbo(persisted_cache)
+    dumbo = Dumbo(persisted_cache, deep_fingerprint_source_prefix)
