@@ -1,0 +1,14 @@
+language: python
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: true
+install:
+  - pip install -q -e .[dev,test]
+script:
+  - python setup.py test
+
+# Push the results back to codecov
+after_success:
+  - codecov
