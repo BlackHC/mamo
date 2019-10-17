@@ -8,6 +8,8 @@ from dumbo.internal.identities import ValueNameIdentity
 
 from tests.testing import BoxedValue
 from tests.testing import dumbo_fixture
+from _pytest.fixtures import fixture
+
 
 dumbo_fib: FunctionType = None
 
@@ -20,9 +22,15 @@ def unwrapped_fib(n):
     return dumbo_fib(n - 1) + dumbo_fib(n - 2)
 
 
-def test_dumbo_fib(dumbo_fixture):
+@fixture
+def dumbo_fib_fixture(dumbo_fixture):
     global dumbo_fib
     dumbo_fib = dumbo.dumbo(unwrapped_fib)
+    yield dumbo_fib
+    dumbo_fib = None
+
+
+def test_dumbo_fib(dumbo_fib_fixture):
     result = dumbo_fib(8)
     assert result == 34
     assert len(main.dumbo.online_cache.value_id_to_vid) == 9
@@ -44,10 +52,7 @@ def test_dumbo_can_wrap_uninitialized():
     main.dumbo = None
 
 
-def test_dumbo_register_external_value(dumbo_fixture):
-    global dumbo_fib
-    dumbo_fib = dumbo.dumbo(unwrapped_fib)
-
+def test_dumbo_register_external_value(dumbo_fib_fixture):
     magic_number = 15
     unique_name = "magic_number"
 
@@ -55,7 +60,7 @@ def test_dumbo_register_external_value(dumbo_fixture):
 
     assert dumbo.get_external_value(unique_name) == magic_number
 
-    result = dumbo_fib(magic_number)
+    result = dumbo_fib_fixture(magic_number)
 
     assert main.dumbo.online_cache.value_id_to_vid[id(result)].cid.args_vid[0] == ValueNameIdentity(unique_name)
 
@@ -64,9 +69,7 @@ def test_dumbo_register_external_value(dumbo_fixture):
     assert dumbo.get_external_value(unique_name) is None
 
 
-def test_dumbo_tag(dumbo_fixture):
-    global dumbo_fib
-    dumbo_fib = dumbo.dumbo(unwrapped_fib)
+def test_dumbo_tag(dumbo_fib_fixture):
     result = dumbo_fib(10)
     tag_name = "duck"
 

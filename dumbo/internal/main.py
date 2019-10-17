@@ -1,5 +1,6 @@
+import ast
 from types import FunctionType, CodeType
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 
 from dumbo.internal import reflection
 from functools import wraps
@@ -37,6 +38,7 @@ class Dumbo:
     # vids_deps: Dict[object, ValueIdentity]
     # If not None, allows for deep function fingerprinting.
     deep_fingerprint_source_prefix: Optional[str]
+    deep_fingerprint_stack: Set[CodeType]
 
     online_cache: DumboOnlineCache
     persisted_cache: DumboPersistedCache
@@ -46,6 +48,7 @@ class Dumbo:
         self.online_cache = DumboOnlineCache(persisted_cache)
         self.code_object_deps = {}
         self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
+        self.deep_fingerprint_stack = set()
 
     def _get_stored_value(self, vid):
         return self.online_cache.get_stored_value(vid)
@@ -67,35 +70,46 @@ class Dumbo:
         return code_object_deps
 
     def _get_deep_fingerprint(self, code_object, namespace):
-        func_deps = self._get_code_object_deps(code_object)
+        if code_object in self.deep_fingerprint_stack:
+            return FunctionFingerprint(reflection.get_code_object_fingerprint(code_object))
+        self.deep_fingerprint_stack.add(code_object)
+        try:
+            # TODO: need a cache for this (also to catch recursion!!!)
+            func_deps = self._get_code_object_deps(code_object)
 
-        resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
-        resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
+            resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
+            resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
 
-        global_vids = {
-            qn: self._identify_value(resolved_global) if resolved_global else None
-            for qn, resolved_global in resolved_globals.items()
-        }
-        global_funcs = {
-            qn: (self._identify_function(resolved_func),
-                 self._get_function_fingerprint(resolved_func)) if resolved_func else None
-            for qn, resolved_func in resolved_funcs.items()
-        }
+            global_vids = {
+                qn: self._identify_value(resolved_global) if resolved_global else None
+                for qn, resolved_global in resolved_globals.items()
+            }
+            global_funcs = {
+                qn: (self._identify_function(resolved_func),
+                     self._get_function_fingerprint(resolved_func)) if resolved_func else None
+                for qn, resolved_func in resolved_funcs.items()
+            }
 
-        return DeepFunctionFingerprint(
-            reflection.get_code_object_fingerprint(code_object),
-            frozenset(global_vids.items()),
-            frozenset(global_funcs.items()),
-        )
+            return DeepFunctionFingerprint(
+                reflection.get_code_object_fingerprint(code_object),
+                frozenset(global_vids.items()),
+                frozenset(global_funcs.items()),
+            )
+        finally:
+            self.deep_fingerprint_stack.remove(code_object)
 
     def _get_function_fingerprint(self, func: FunctionType) -> Optional[FunctionFingerprint]:
         if reflection.is_func_builtin(func):
             func_fingerprint = None
-        elif self.deep_fingerprint_source_prefix is not None and reflection.is_func_local(func,
-                                                                                          self.deep_fingerprint_source_prefix):
-            func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
         else:
-            func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
+            if hasattr(func, "dumbo_unwrapped_func"):
+                func = func.dumbo_unwrapped_func
+
+            if self.deep_fingerprint_source_prefix is not None and \
+                    reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
+                func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
+            else:
+                func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
 
         return func_fingerprint
 
@@ -158,14 +172,19 @@ class Dumbo:
             dumbo.online_cache.update(vid, StoredResult(wrapped_result, func_fingerprint))
             return wrapped_result
 
+        wrapped_func.dumbo_unwrapped_func = func
         return wrapped_func
 
     def run_cell(self, cell: str, user_ns: dict):
         # TODO: wrap in a function and execute, so we need explicit globals for stores?
-        wrapped_in_function = "def cell_function():\n\t" + "\n\t".join(cell.split("\n"))
+        # TODO: this needs to support space-based indentation!
+        function_module = ast.parse("def cell_function():\n  pass")
+        cell_module = ast.parse(cell)
+        function_module.body[0].body = cell_module.body
+        compiled_function = compile(function_module, 'cell', 'exec')
 
         local_ns = {}
-        exec(wrapped_in_function, user_ns, local_ns)
+        exec(compiled_function, user_ns, local_ns)
         cell_function = local_ns["cell_function"]
         code_object = cell_function.__code__
 
@@ -176,6 +195,7 @@ class Dumbo:
         cid = self._identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
         vid = ValueCIDIdentity(cid)
 
+        # TODO: there is a lot of code shared between wrapped_func and run_cell!
         # TODO: These fingerprints are not cached! Do we want to cache them?
         cell_fingerprint = self._get_deep_fingerprint(code_object, user_ns)
 

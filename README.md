@@ -287,3 +287,11 @@ Resolution: support tuples as special type everywhere and apply all module exten
 TODO:
 
 * [x] support a separate path for externally cached files
+
+## Better support for deep function signatures and staleness
+
+* [x] support functions calling dumbo-wrapped functions (duh!)
+* [x] add a cache for shallow function signatures
+* [ ] walk the cache and detect staleness?
+* [ ] can we use named cells somehow? we can use a name with the cell magic (as an option)
+
