@@ -59,8 +59,10 @@ class Dumbo:
     def _identify_function(self, func) -> FunctionIdentity:
         return FunctionIdentity(reflection.get_func_qualified_name(func))
 
-    def _identify_cell(self, code_object: CodeType) -> FunctionIdentity:
-        return CellIdentity("cell", reflection.get_code_object_fingerprint(code_object))
+    def _identify_cell(self, name: str, code_object: CodeType) -> FunctionIdentity:
+        if name is not None:
+            return CellIdentity(name, None)
+        return CellIdentity(name, reflection.get_code_object_fingerprint(code_object))
 
     def _get_code_object_deps(self, code_object) -> FunctionDependencies:
         code_object_deps = self.code_object_deps.get(code_object)
@@ -135,6 +137,9 @@ class Dumbo:
 
         return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
 
+    def check_staleness(self):
+        pass
+
     @staticmethod
     def wrap_function(func):
         # This method is a static method, so that dumbo does not need to be initialized.
@@ -175,7 +180,7 @@ class Dumbo:
         wrapped_func.dumbo_unwrapped_func = func
         return wrapped_func
 
-    def run_cell(self, cell: str, user_ns: dict):
+    def run_cell(self,  name: Optional[str], cell: str, user_ns: dict):
         # TODO: wrap in a function and execute, so we need explicit globals for stores?
         # TODO: this needs to support space-based indentation!
         function_module = ast.parse("def cell_function():\n  pass")
@@ -188,7 +193,7 @@ class Dumbo:
         cell_function = local_ns["cell_function"]
         code_object = cell_function.__code__
 
-        cell_id = self._identify_cell(code_object)
+        cell_id = self._identify_cell(name, code_object)
 
         loads, global_stores = reflection.get_global_loads_stores(code_object)
 

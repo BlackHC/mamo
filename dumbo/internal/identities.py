@@ -34,7 +34,7 @@ class FunctionIdentity:
 
 @dataclass(unsafe_hash=True)
 class CellIdentity(FunctionIdentity):
-    fingerprint: int
+    fingerprint: object
 
 
 # We keep this separate from FunctionIdentity, so as to cache by identity

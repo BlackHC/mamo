@@ -95,16 +95,40 @@ def test_run_cell(dumbo_fixture):
     user_ns_obj.boxed = BoxedValue("hello")
     cell_code = "global var; var = boxed"
 
-    main.dumbo.run_cell(cell_code, user_ns)
+    main.dumbo.run_cell(None, cell_code, user_ns)
 
     assert user_ns_obj.var == user_ns_obj.boxed
     assert user_ns_obj.var is not user_ns_obj.boxed
 
     var_old = user_ns_obj.var
 
-    main.dumbo.run_cell(cell_code, user_ns)
+    main.dumbo.run_cell(None, cell_code, user_ns)
 
     assert user_ns_obj.var is var_old
+
+
+def test_run_named_cell(dumbo_fixture):
+    class Dummy:
+        pass
+
+    user_ns_obj = Dummy()
+    user_ns_obj.var = None
+    user_ns = user_ns_obj.__dict__
+
+    user_ns_obj.boxed = BoxedValue("hello")
+    cell_code = "global var; var = boxed"
+
+    main.dumbo.run_cell("named_cell", cell_code, user_ns)
+
+    assert user_ns_obj.var == user_ns_obj.boxed
+    assert user_ns_obj.var is not user_ns_obj.boxed
+
+    var_old = user_ns_obj.var
+
+    main.dumbo.run_cell("named_cell", "pass", user_ns)
+
+    assert user_ns_obj.var is var_old
+
 
 
 # @dumbo.dumbo()

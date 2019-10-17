@@ -292,6 +292,13 @@ TODO:
 
 * [x] support functions calling dumbo-wrapped functions (duh!)
 * [x] add a cache for shallow function signatures
-* [ ] walk the cache and detect staleness?
-* [ ] can we use named cells somehow? we can use a name with the cell magic (as an option)
+* [f] walk the cache and detect staleness?
+* [x] can we use named cells somehow? we can use a name with the cell magic (as an option)
+
+We cannot detect staleness automatically because we cannot resolve functions easily potentially...
+
+How do we force recomputation in case of staleness (or general recomputation)?
+We could use a decorator or context manager.
+
+As an API it might be neat to have a way to mark stale entries for recomputation via C&P in Jupyter.
 
