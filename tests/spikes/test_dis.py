@@ -98,9 +98,9 @@ def test_function_module():
 
 def test_is_function_local():
     local_prefix = r"C:\Users\black\Documents\dumbo"
-    assert not is_function_local(print, local_prefix)
-    assert is_function_local(local_func, local_prefix)
-    assert not is_function_local(dis.disassemble, local_prefix)
+    print(not is_function_local(print, local_prefix))
+    print(is_function_local(local_func, local_prefix))
+    print(not is_function_local(dis.disassemble, local_prefix))
 
 
 def test_hash_code_objects():
