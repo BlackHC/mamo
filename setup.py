@@ -50,7 +50,6 @@ setup(
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     packages=["dumbo", "dumbo.internal", "dumbo.support"],
-    package_dir={"": "src"},
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
@@ -61,7 +60,7 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        "dev": ["check-manifest", "numpy", "pytorch"],
+        "dev": ["check-manifest", "numpy", "torch"],
         "test": ["coverage", "codecov", "pytest", "pytest-benchmark", "pytest-cov"],
     },
     setup_requires=["pytest-runner"],
