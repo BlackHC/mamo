@@ -302,3 +302,10 @@ We could use a decorator or context manager.
 
 As an API it might be neat to have a way to mark stale entries for recomputation via C&P in Jupyter.
 
+## Do we want recompute by default or reuse by default?
+
+In a Jupyter setting, we might be okay with recomputing a direct call but using stale data for indirect calls.
+In a script setting, we might be okay with recomputing by default.
+
+In general, we might be okay with recomputing by default only if it takes less than a certain time.
+Which sounds like a sensible thing to have.

@@ -7,7 +7,7 @@ from types import FunctionType, CodeType
 import builtins
 
 # Bytecode-extracted features. Independent of runtime and can be cached.
-from typing import FrozenSet, Tuple
+from typing import FrozenSet, Tuple, Optional
 
 
 @dataclass(unsafe_hash=True)
@@ -158,8 +158,16 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
     return FunctionDependencies(frozenset(loads), frozenset(calls))
 
 
-def is_func_local(func, local_prefix):
+def is_func_local(func, local_prefix: Optional[str]):
     module = inspect.getmodule(func)
+
+    # Functions in the main module are local by nature (so we don't need a local_prefix to establish that).
+    if module.__name__ == '__main__':
+        return True
+
+    if local_prefix is None:
+        return False
+
     # Python's builtin module does not have a __file__ field.
     if not hasattr(module, "__file__"):
         return False
