@@ -306,6 +306,14 @@ We could mark staleness at least and then flag it up in later calls.
 
 (So keep a dirty flag in the online version of any loaded value.)
 
+## Do we want recompute by default or reuse by default?
+
+In a Jupyter setting, we might be okay with recomputing a direct call by using stale data for indirect calls.
+In a script setting, we might be okay with recomputing by default.
+
+In general, we might be okay with recomputing by default only if it takes less than a certain time.
+Which sounds like a sensible thing to have.
+
 ## New sprint
 
 * [ ] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)

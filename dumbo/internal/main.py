@@ -107,8 +107,7 @@ class Dumbo:
             if hasattr(func, "dumbo_unwrapped_func"):
                 func = func.dumbo_unwrapped_func
 
-            if self.deep_fingerprint_source_prefix is not None and \
-                    reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
+            if reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
                 func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
             else:
                 func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
@@ -262,8 +261,8 @@ dumbo: Optional[Dumbo] = None
 def init_dumbo(memory_only=True,
                path: Optional[str] = None,
                externally_cached_path: Optional[str] = None,
-               # By default, we use deep fingerprints everywhere for now.
-               deep_fingerprint_source_prefix: Optional[str] = ""):
+               # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
+               deep_fingerprint_source_prefix: Optional[str] = None):
     global dumbo
     assert dumbo is None
 
