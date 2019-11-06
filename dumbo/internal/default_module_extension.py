@@ -81,7 +81,7 @@ class DefaultModuleExtension(ModuleExtension):
     def compute_fingerprint(self, value):
         object_saver = self.get_object_saver(value)
         # TODO: case where estimated_size returns None!
-        if object_saver and object_saver.get_estimated_size(value) > MAX_PICKLE_SIZE:
+        if object_saver and object_saver.get_estimated_size() > MAX_PICKLE_SIZE:
             # TODO: log
             return None
 

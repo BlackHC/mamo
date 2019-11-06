@@ -112,7 +112,7 @@ class DumboPersistedCache:
                 self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
             )
 
-        cached_value = object_saver.cache_value(stored_result.value, external_path_builder)
+        cached_value = object_saver.cache_value(external_path_builder)
         if cached_value is None:
             # TODO: log?
             return None
