@@ -25,7 +25,7 @@ class ObjectSaver:
         """Returns None if the fingerprint couldn't be created."""
         estimated_size = self.get_estimated_size()
         if estimated_size is not None and estimated_size <= MAX_FINGERPRINT_LENGTH:
-            return FingerprintSelf(self.value)
+            return self.value
 
         digest = self.compute_digest()
         if digest is not None:

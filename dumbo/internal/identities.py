@@ -35,11 +35,6 @@ class FingerprintDigest:
 
 
 @dataclass(unsafe_hash=True)
-class FingerprintSelf:
-    value: object
-
-
-@dataclass(unsafe_hash=True)
 class FunctionIdentity:
     qualified_name: str
 
