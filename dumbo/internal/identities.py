@@ -4,6 +4,8 @@ from typing import Tuple, FrozenSet, Optional, Generic, TypeVar
 
 T = TypeVar("T")
 
+# TODO: can we freeze the fields? (and not use unsafe_hash=True)?
+
 
 class ValueIdentity:
     def get_external_info(self):
@@ -21,10 +23,20 @@ class ValueNameIdentity(ValueIdentity):
 @dataclass(unsafe_hash=True)
 class ValueFingerprintIdentity(ValueIdentity):
     qualified_type_name: str
-    fingerprint: int
+    fingerprint: object
 
     def get_external_info(self):
         return f"{self.qualified_type_name}_{self.fingerprint}"
+
+
+@dataclass(unsafe_hash=True)
+class FingerprintDigest:
+    digest: object
+
+
+@dataclass(unsafe_hash=True)
+class FingerprintSelf:
+    value: object
 
 
 @dataclass(unsafe_hash=True)
@@ -42,7 +54,7 @@ class CellIdentity(FunctionIdentity):
 # (Otherwise, we lack a key to index with.)
 @dataclass(unsafe_hash=True)
 class FunctionFingerprint:
-    fingerprint: int
+    fingerprint: object
 
 
 # Runtime dependencies.

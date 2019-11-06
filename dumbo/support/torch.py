@@ -28,7 +28,7 @@ class TorchObjectSaver(ObjectSaver):
     def get_estimated_size(self) -> Optional[int]:
         return self.value.numel() * self.value.element_size()
 
-    def compute_fingerprint(self):
+    def compute_digest(self):
         return hashlib.md5(self.value.numpy()).digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:

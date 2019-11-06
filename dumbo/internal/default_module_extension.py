@@ -7,7 +7,7 @@ import objproxies
 from typing import Optional, Tuple
 
 from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, DBCachedValue
-from dumbo.internal.module_extension import ModuleExtension, MAX_FINGERPRINT_LENGTH, MODULE_EXTENSIONS, ObjectSaver
+from dumbo.internal.module_extension import ModuleExtension, ObjectSaver
 
 import hashlib
 
@@ -36,13 +36,7 @@ class DefaultObjectSaver(ObjectSaver):
     def get_estimated_size(self) -> Optional[int]:
         return len(self.pickled_bytes)
 
-    def compute_fingerprint(self):
-        # TODO: this fails if try_pickle returns None!!!! Fix this!
-        if len(self.pickled_bytes) <= MAX_FINGERPRINT_LENGTH:
-            return self.value
-
-        # TODO: add a special fingerprint class, so we can differentiate between
-        # digests and pickled values. (which can be useful for debugging)
+    def compute_digest(self):
         return hashlib.md5(self.pickled_bytes).digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
@@ -58,21 +52,16 @@ class DefaultObjectSaver(ObjectSaver):
 
 
 class DefaultTupleObjectSaver(ObjectSaver):
-    def __init__(self, value, object_savers: Tuple[ObjectSaver]):
-        self.value = value
+    def __init__(self, object_savers: Tuple[ObjectSaver]):
         self.object_savers = object_savers
 
     def get_estimated_size(self) -> int:
         return sum(object_saver.get_estimated_size() for object_saver in self.object_savers)
 
-    def compute_fingerprint(self):
-        estimated_size = self.get_estimated_size()
-        if estimated_size <= MAX_FINGERPRINT_LENGTH:
-            return self.value
-
+    def compute_digest(self):
         hash_method = hashlib.md5()
         for object_saver in self.object_savers:
-            hash_method.update(object_saver.compute_fingerprint())
+            hash_method.update(object_saver.compute_digest())
         return hash_method.digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
@@ -101,7 +90,6 @@ class DefaultModuleExtension(ModuleExtension):
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         if isinstance(value, tuple):
             return DefaultTupleObjectSaver(
-                value,
                 tuple(
                     self.module_registry.get_object_saver(item)
                     for item in value
