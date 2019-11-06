@@ -302,3 +302,10 @@ We could use a decorator or context manager.
 
 As an API it might be neat to have a way to mark stale entries for recomputation via C&P in Jupyter.
 
+We could mark staleness at least and then flag it up in later calls.
+
+(So keep a dirty flag in the online version of any loaded value.)
+
+## New sprint
+
+* [ ] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)

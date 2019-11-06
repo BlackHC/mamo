@@ -94,9 +94,14 @@ class DumboPersistedCache:
     def try_create_cached_value(
         self, vid: ValueCIDIdentity, stored_result: StoredResult
     ) -> Optional[StoredResult[CachedValue]]:
-        estimated_size = MODULE_EXTENSIONS.get_estimated_size(stored_result.value)
+        object_saver = MODULE_EXTENSIONS.get_object_saver(stored_result.value)
+        if object_saver is None:
+            # TODO: log?
+            return None
+
+        estimated_size = object_saver.get_estimated_size()
         if estimated_size is None:
-            # TODO log?
+            # TODO: log?
             return None
 
         external_path_builder = None
@@ -107,9 +112,11 @@ class DumboPersistedCache:
                 self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
             )
 
-        cached_value = MODULE_EXTENSIONS.cache_value(stored_result.value, external_path_builder)
+        cached_value = object_saver.cache_value(stored_result.value, external_path_builder)
+        if cached_value is None:
+            # TODO: log?
+            return None
 
-        # TODO: handle cached_value is None and log?!!
         return StoredResult(cached_value, stored_result.func_fingerprint)
 
     def update(self, vid: ValueCIDIdentity, value: StoredResult):
