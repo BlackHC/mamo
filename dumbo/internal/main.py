@@ -125,9 +125,13 @@ class Dumbo:
         if vid is not None:
             return vid
 
-        fingerprint = MODULE_EXTENSIONS.compute_fingerprint(value)
+        fingerprint = None
+        object_saver = MODULE_EXTENSIONS.get_object_saver(value)
+        if object_saver is not None:
+            fingerprint = object_saver.compute_fingerprint()
 
         if fingerprint is None:
+            # TODO: log?
             raise ValueError(
                 f"Cannot fingerprint {value}!"
                 " Please either add an extension to support it,"

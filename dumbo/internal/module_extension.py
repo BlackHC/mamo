@@ -16,6 +16,10 @@ class ObjectSaver:
         """Returns None if the size couldn't be estimated."""
         raise NotImplementedError()
 
+    def compute_fingerprint(self):
+        """Returns None if the fingerprint couldn't be created."""
+        raise NotImplementedError()
+
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         """Returns None if the value couldn't be cached."""
         raise NotImplementedError()
@@ -26,10 +30,6 @@ class ModuleExtension:
     module_registry: "ModuleRegistry" = None
 
     def supports(self, value) -> bool:
-        raise NotImplementedError()
-
-    def compute_fingerprint(self, value):
-        """Returns None if the fingerprint couldn't be created."""
         raise NotImplementedError()
 
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
@@ -67,15 +67,6 @@ class ModuleRegistry:
         if value_supported is None:
             value_supported = self.default_extension.supports(value)
         return value_supported
-
-    def compute_fingerprint(self, value):
-        extension = self.get(value)
-        fingerprint = None
-        if extension is not None and extension.supports(value):
-            fingerprint = extension.compute_fingerprint(value)
-        if fingerprint is None:
-            fingerprint = self.default_extension.compute_fingerprint(value)
-        return fingerprint
 
     def get_object_saver(self, value) -> ObjectSaver:
         extension = self.get(value)

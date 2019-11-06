@@ -316,4 +316,4 @@ Which sounds like a sensible thing to have.
 
 ## New sprint
 
-* [ ] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)
+* [x] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)

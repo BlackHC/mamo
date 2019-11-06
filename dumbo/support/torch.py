@@ -28,6 +28,9 @@ class TorchObjectSaver(ObjectSaver):
     def get_estimated_size(self) -> Optional[int]:
         return self.value.numel() * self.value.element_size()
 
+    def compute_fingerprint(self):
+        return hashlib.md5(self.value.numpy()).digest()
+
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         if external_path_builder is None:
             return DBCachedValue(self.value)
@@ -43,9 +46,6 @@ class TorchObjectSaver(ObjectSaver):
 class TorchModuleExtension(ModuleExtension):
     def supports(self, value) -> bool:
         return isinstance(value, th.Tensor)
-
-    def compute_fingerprint(self, value: th.Tensor):
-        return hashlib.md5(value.numpy()).digest()
 
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         return TorchObjectSaver(value)

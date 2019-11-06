@@ -36,6 +36,15 @@ class DefaultObjectSaver(ObjectSaver):
     def get_estimated_size(self) -> Optional[int]:
         return len(self.pickled_bytes)
 
+    def compute_fingerprint(self):
+        # TODO: this fails if try_pickle returns None!!!! Fix this!
+        if len(self.pickled_bytes) <= MAX_FINGERPRINT_LENGTH:
+            return self.value
+
+        # TODO: add a special fingerprint class, so we can differentiate between
+        # digests and pickled values. (which can be useful for debugging)
+        return hashlib.md5(self.pickled_bytes).digest()
+
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         if external_path_builder is not None:
             external_path = external_path_builder.build(get_type_qualified_name(self.value), "pickle")
@@ -49,11 +58,22 @@ class DefaultObjectSaver(ObjectSaver):
 
 
 class DefaultTupleObjectSaver(ObjectSaver):
-    def __init__(self, object_savers: Tuple[ObjectSaver]):
+    def __init__(self, value, object_savers: Tuple[ObjectSaver]):
+        self.value = value
         self.object_savers = object_savers
 
-    def get_estimated_size(self) -> Optional[int]:
+    def get_estimated_size(self) -> int:
         return sum(object_saver.get_estimated_size() for object_saver in self.object_savers)
+
+    def compute_fingerprint(self):
+        estimated_size = self.get_estimated_size()
+        if estimated_size <= MAX_FINGERPRINT_LENGTH:
+            return self.value
+
+        hash_method = hashlib.md5()
+        for object_saver in self.object_savers:
+            hash_method.update(object_saver.compute_fingerprint())
+        return hash_method.digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         return CachedTuple(
@@ -78,31 +98,10 @@ class DefaultModuleExtension(ModuleExtension):
             print(err)
             return None
 
-    def compute_fingerprint(self, value):
-        object_saver = self.get_object_saver(value)
-        # TODO: case where estimated_size returns None!
-        if object_saver and object_saver.get_estimated_size() > MAX_PICKLE_SIZE:
-            # TODO: log
-            return None
-
-        pickled_bytes = self.try_pickle(value)
-        # TODO: this fails if try_pickle returns None!!!! Fix this!
-        if len(pickled_bytes) <= MAX_FINGERPRINT_LENGTH:
-            return value
-
-        if isinstance(value, tuple):
-            hash_method = hashlib.md5()
-            for item in value:
-                hash_method.update(self.module_registry.compute_fingerprint(item))
-            return hash_method.digest()
-
-        # TODO: add a special fingerprint class, so we can differentiate between
-        # digests and pickled values. (which can be useful for debugging)
-        return hashlib.md5(pickled_bytes).digest()
-
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         if isinstance(value, tuple):
             return DefaultTupleObjectSaver(
+                value,
                 tuple(
                     self.module_registry.get_object_saver(item)
                     for item in value
@@ -114,6 +113,10 @@ class DefaultModuleExtension(ModuleExtension):
         except pickle.PicklingError as err:
             # TODO: log err
             print(err)
+            return None
+
+        if len(pickled_bytes) > MAX_PICKLE_SIZE:
+            # TODO: log
             return None
 
         return DefaultObjectSaver(value, pickled_bytes)

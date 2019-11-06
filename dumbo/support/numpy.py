@@ -29,6 +29,9 @@ class NumpyObjectSaver(ObjectSaver):
     def get_estimated_size(self) -> Optional[int]:
         return self.value.nbytes
 
+    def compute_fingerprint(self):
+        return hashlib.md5(self.value).digest()
+
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         if external_path_builder is None:
             return DBCachedValue(self.value)
@@ -44,9 +47,6 @@ class NumpyObjectSaver(ObjectSaver):
 class NumpyModuleExtension(ModuleExtension):
     def supports(self, value) -> bool:
         return isinstance(value, np_types)
-
-    def compute_fingerprint(self, value):
-        return hashlib.md5(value).digest()
 
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         return NumpyObjectSaver(value)
