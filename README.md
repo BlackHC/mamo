@@ -318,3 +318,4 @@ Which sounds like a sensible thing to have.
 
 * [x] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)
 * [x] ValueFingerprint plus general code.
+* [x] add get_cached_value_identities

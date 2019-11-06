@@ -7,6 +7,7 @@ from dumbo.internal import main
 from dumbo.internal.identities import ValueNameIdentity
 
 from tests.testing import BoxedValue
+# noinspection PyUnresolvedReferences
 from tests.testing import dumbo_fixture
 from _pytest.fixtures import fixture
 
@@ -35,6 +36,11 @@ def test_dumbo_fib(dumbo_fib_fixture):
     assert result == 34
     assert len(main.dumbo.online_cache.value_id_to_vid) == 9
     assert len(main.dumbo.online_cache.vid_to_value) == 9
+
+    assert len(dumbo.get_cached_value_identities(False)) == 9
+    dumbo.flush_online_cache()
+    assert len(dumbo.get_cached_value_identities(False)) == 0
+    assert len(dumbo.get_cached_value_identities(True)) == 9
 
 
 def test_dumbo_can_wrap_uninitialized():

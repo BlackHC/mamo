@@ -70,3 +70,15 @@ def test_doc_tagging_works():
     assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
     assert online_cache.get_tag_stored_value(tag_name) is value
+
+
+def test_doc_get_vids_works():
+    persisted_cache = DummyPersistedCache()
+    online_cache = DumboOnlineCache(persisted_cache)
+
+    vid = ValueNameIdentity("test")
+    value = StoredValue(BoxedValue(5))
+
+    online_cache.update(vid, value)
+
+    assert online_cache.get_vids() == {vid}

@@ -19,6 +19,18 @@ def test_persisted_cache_memory_only():
     assert cache.get_cached_value(vid).value.cached_value is value.value
 
 
+def test_persisted_cache_get_vids_works():
+    cache = DumboPersistedCache.from_memory()
+
+    vid = ValueNameIdentity("test")
+    value = StoredResult(testing.BoxedValue(1), None)
+
+    assert cache.get_cached_value(vid) is None
+    cache.update(vid, value)
+
+    assert cache.get_cached_vids() == {vid}
+
+
 def test_persisted_cache_persists():
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir

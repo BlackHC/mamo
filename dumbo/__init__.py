@@ -35,3 +35,18 @@ def get_external_value(unique_name):
     _ensure_dumbo_init()
 
     return main.dumbo.get_external_value(unique_name)
+
+
+def flush_online_cache():
+    _ensure_dumbo_init()
+    main.dumbo.flush_online_cache()
+
+
+def get_cached_value_identities(persisted=False):
+    _ensure_dumbo_init()
+
+    # TODO: add require_dumbo_init??? (so we don't accidentally initialize dumbo in a getter
+    vids = main.dumbo.get_value_identities(persisted=persisted)
+
+    # TODO: convert to dicts?
+    return vids

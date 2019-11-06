@@ -140,8 +140,19 @@ class Dumbo:
 
         return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
 
-    def check_staleness(self):
-        pass
+    def get_value_identities(self, persisted=False):
+        # TODO: add tests
+        # TODO: don't leak internal objects (convert to dicts or similar instead?)
+        if not persisted:
+            return self.online_cache.get_vids()
+
+        vids = set()
+        vids.update(self.persisted_cache.get_cached_vids())
+        vids.update(self.online_cache.get_vids())
+        return vids
+
+    def flush_online_cache(self):
+        self.online_cache.flush()
 
     @staticmethod
     def wrap_function(func):

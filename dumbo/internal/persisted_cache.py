@@ -143,6 +143,9 @@ class DumboPersistedCache:
                     if existing_cached_value:
                         del self.storage.vid_to_cached_value[vid]
 
+    def get_cached_vids(self):
+        return self.storage.vid_to_cached_value.keys()
+
     def get_cached_value(self, vid) -> Optional[StoredResult[CachedValue]]:
         return self.storage.vid_to_cached_value.get(vid)
 

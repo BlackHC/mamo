@@ -36,6 +36,14 @@ class DumboOnlineCache:
     def get_vid(self, value):
         return self.value_id_to_vid.get(id(value))
 
+    def get_vids(self):
+        return self.vid_to_value.keys()
+
+    def flush(self):
+        self.vid_to_value.clear()
+        # TODO: might want to flush this separately (because it might use less memory)
+        self.value_id_to_vid.clear()
+
     def update(self, vid: ValueIdentity, stored_value: StoredValue):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
