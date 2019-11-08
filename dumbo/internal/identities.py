@@ -34,6 +34,18 @@ class FingerprintDigest:
     digest: object
 
 
+@dataclass(unsafe_hash=False)
+class FingerprintDigestValue(FingerprintDigest):
+    """`FingerprintDigest that carries its original value to be more informative."""
+    value: object
+
+    def __eq__(self, other):
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return super().__hash__()
+
+
 @dataclass(unsafe_hash=True)
 class FunctionIdentity:
     qualified_name: str

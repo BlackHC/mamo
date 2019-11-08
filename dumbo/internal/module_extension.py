@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
 from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue
-from dumbo.internal.identities import FingerprintDigest
+from dumbo.internal.identities import FingerprintDigest, FingerprintDigestValue
 from dumbo.internal.reflection import get_module_name
 
 
@@ -23,14 +23,15 @@ class ObjectSaver:
 
     def compute_fingerprint(self):
         """Returns None if the fingerprint couldn't be created."""
+        digest = self.compute_digest()
+        if digest is None:
+            # TODO: log?
+            return None
+
         estimated_size = self.get_estimated_size()
         if estimated_size is not None and estimated_size <= MAX_FINGERPRINT_LENGTH:
-            return self.value
-
-        digest = self.compute_digest()
-        if digest is not None:
-            return FingerprintDigest(digest)
-        return None
+            return FingerprintDigestValue(digest, self.value)
+        return FingerprintDigest(digest)
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         """Returns None if the value couldn't be cached."""
