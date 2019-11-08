@@ -18,7 +18,7 @@ from dumbo.internal.identities import (
     StoredResult,
     StoredValue,
     CellIdentity,
-)
+    CallFingerprint)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
@@ -51,7 +51,7 @@ class Dumbo:
         self.deep_fingerprint_stack = set()
 
     def _get_stored_value(self, vid):
-        return self.online_cache.get_stored_value(vid)
+        return self.online_cache.get_stored_result(vid)
 
     def _get_vid(self, value):
         return self.online_cache.get_vid(value)
@@ -114,6 +114,25 @@ class Dumbo:
 
         return func_fingerprint
 
+    def _get_call_fingerprint(self, call: CallIdentity, func_fingerprint: FunctionFingerprint):
+        args_fingerprints = []
+        for vid in call.args_vid:
+            stored_result = self._get_stored_value(vid)
+            if isinstance(stored_result, StoredResult):
+                args_fingerprints.append(stored_result.call_fingerprint)
+            else:
+                args_fingerprints.append(None)
+
+        kwargs_fingerprints = []
+        for name, vid in call.kwargs_vid:
+            stored_result = self._get_stored_value(vid)
+            if isinstance(stored_result, StoredResult):
+                kwargs_fingerprints.append((name, stored_result.call_fingerprint))
+            else:
+                kwargs_fingerprints.append((name, None))
+
+        return CallFingerprint(func_fingerprint, tuple(args_fingerprints), frozenset(kwargs_fingerprints))
+
     def _identify_call(self, fid, args, kwargs) -> CallIdentity:
         args_vid = tuple(self._identify_value(arg) for arg in args)
         kwargs_vid = frozenset((name, self._identify_value(value)) for name, value in kwargs.items())
@@ -154,6 +173,32 @@ class Dumbo:
     def flush_online_cache(self):
         self.online_cache.flush()
 
+    def is_stale(self, func, args, kwargs):
+        fid = dumbo._identify_function(func)
+        cid = dumbo._identify_call(fid, args, kwargs)
+        vid = ValueCIDIdentity(cid)
+
+        func_fingerprint = dumbo._get_function_fingerprint(func)
+
+        call_fingerprint = dumbo._get_call_fingerprint(cid, func_fingerprint)
+        stored_call_fingerprint = dumbo.online_cache.get_call_fingerprint(vid)
+
+        return call_fingerprint != stored_call_fingerprint
+
+    def is_cached(self, func, args, kwargs):
+        fid = dumbo._identify_function(func)
+        cid = dumbo._identify_call(fid, args, kwargs)
+        vid = ValueCIDIdentity(cid)
+
+        return self.online_cache.has_vid(vid)
+
+    def forget(self, func, args, kwargs):
+        fid = dumbo._identify_function(func)
+        cid = dumbo._identify_call(fid, args, kwargs)
+        vid = ValueCIDIdentity(cid)
+
+        self.online_cache.update(vid, None)
+
     @staticmethod
     def wrap_function(func):
         # This method is a static method, so that dumbo does not need to be initialized.
@@ -177,21 +222,29 @@ class Dumbo:
 
             func_fingerprint = dumbo._get_function_fingerprint(func)
 
+            call_fingerprint = dumbo._get_call_fingerprint(cid, func_fingerprint)
+
+            # TODO: could simplify logic by always fetching values using a method call.
+
             # TODO: logic about whether to load from cache or recompute!
             memoized_result = dumbo._get_stored_value(vid)
             if memoized_result is not None:
                 assert isinstance(memoized_result, StoredResult)
-                if func_fingerprint != memoized_result.func_fingerprint:
+                if call_fingerprint != memoized_result.call_fingerprint:
                     # TODO: log
-                    print(f"{vid.cid} is stale!" f"\t{func_fingerprint}\nvs\n\t{memoized_result.func_fingerprint}")
+                    print(f"{vid.cid} is stale!" f"\t{call_fingerprint}\nvs\n\t{memoized_result.call_fingerprint}")
                 return memoized_result.value
 
             result = func(*args, **kwargs)
             wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-            dumbo.online_cache.update(vid, StoredResult(wrapped_result, func_fingerprint))
+            dumbo.online_cache.update(vid, StoredResult(wrapped_result, call_fingerprint))
             return wrapped_result
 
         wrapped_func.dumbo_unwrapped_func = func
+        wrapped_func.is_stale = lambda *args, **kwargs: dumbo.is_stale(func, args, kwargs)
+        wrapped_func.is_cached = lambda *args, **kwargs: dumbo.is_cached(func, args, kwargs)
+        wrapped_func.forget = lambda *args, **kwargs: dumbo.forget(func, args, kwargs)
+
         return wrapped_func
 
     def run_cell(self,  name: Optional[str], cell: str, user_ns: dict):
@@ -218,13 +271,15 @@ class Dumbo:
         # TODO: These fingerprints are not cached! Do we want to cache them?
         cell_fingerprint = self._get_deep_fingerprint(code_object, user_ns)
 
+        call_fingerprint = self._get_call_fingerprint(cid, cell_fingerprint)
+
         # TODO: logic about whether to load from cache or recompute!
         memoized_result = dumbo._get_stored_value(vid)
         if memoized_result is not None:
             assert isinstance(memoized_result, StoredResult)
-            if cell_fingerprint != memoized_result.func_fingerprint:
+            if call_fingerprint != memoized_result.call_fingerprint:
                 # TODO: log
-                print(f"{vid.cid} is stale!" f"\t{cell_fingerprint}\nvs\n\t{memoized_result.func_fingerprint}")
+                print(f"{vid.cid} is stale!" f"\t{call_fingerprint}\nvs\n\t{memoized_result.call_fingerprint}")
             assert isinstance(memoized_result.value, tuple)
             user_ns.update(zip(*memoized_result.value))
         else:
@@ -237,7 +292,7 @@ class Dumbo:
             # This will take care of each value separately. (At least for wrapping!!)
             wrapped_results = MODULE_EXTENSIONS.wrap_return_value(unzipped_results)
 
-            dumbo.online_cache.update(vid, StoredResult(wrapped_results, cell_fingerprint))
+            dumbo.online_cache.update(vid, StoredResult(wrapped_results, call_fingerprint))
             user_ns.update(zip(*wrapped_results))
 
     def register_external_value(self, unique_name, value):

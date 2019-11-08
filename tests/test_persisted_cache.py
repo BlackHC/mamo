@@ -19,6 +19,19 @@ def test_persisted_cache_memory_only():
     assert cache.get_cached_value(vid).value.cached_value is value.value
 
 
+def test_persisted_cache_update_none_works():
+    cache = DumboPersistedCache.from_memory()
+
+    vid = ValueNameIdentity("test")
+    value = StoredResult(testing.BoxedValue(1), None)
+
+    assert cache.get_cached_value(vid) is None
+    cache.update(vid, value)
+    assert cache.get_cached_value(vid).value.cached_value is value.value
+    cache.update(vid, None)
+    assert cache.get_cached_value(vid) is None
+
+
 def test_persisted_cache_get_vids_works():
     cache = DumboPersistedCache.from_memory()
 

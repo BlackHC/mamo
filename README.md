@@ -319,5 +319,11 @@ Which sounds like a sensible thing to have.
 * [x] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)
 * [x] ValueFingerprint plus general code.
 * [x] add get_cached_value_identities.
-* [ ] Need FingerprintWValue that has custom hash
-* [ ] add a staleness flag to the online cache (no need for the offline cache!)
+* [x] Need FingerprintWValue that has custom hash
+* [x] add call fingerprint that also fingerprints args etc so we can determine staleness
+* [x] add tests for callfingerprint staleness
+* [ ] add support for forgetting cells as well
+
+## Staleness/call fingerprints
+
+Because we are using an object-aware database, only stale entries will cause duplications of fingerprints. Staleness becomes a "simple" check if these call fingerprints match or not.

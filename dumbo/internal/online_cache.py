@@ -1,4 +1,4 @@
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
+from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult, CallFingerprint
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Any, Optional
 from dumbo.internal.bimap import DictBimap
@@ -18,10 +18,24 @@ class DumboOnlineCache:
         self.value_id_to_vid = {}
         self.tag_to_vid = DictBimap()
 
+    def has_vid(self, vid):
+        return vid in self.vid_to_value or self.persisted_cache.has_vid(vid)
+
     def has_value(self, value):
         return id(value) in self.value_id_to_vid
 
-    def get_stored_value(self, vid):
+    def get_call_fingerprint(self, vid) -> Optional[CallFingerprint]:
+        assert isinstance(vid, ValueCIDIdentity)
+        if vid in self.vid_to_value:
+            stored_result = self.vid_to_value[vid]
+        else:
+            stored_result = self.persisted_cache.get_cached_value(vid)
+
+        if stored_result is not None:
+            return stored_result.call_fingerprint
+        return None
+
+    def get_stored_result(self, vid):
         if vid in self.vid_to_value:
             return self.vid_to_value[vid]
 
@@ -44,7 +58,7 @@ class DumboOnlineCache:
         # TODO: might want to flush this separately (because it might use less memory)
         self.value_id_to_vid.clear()
 
-    def update(self, vid: ValueIdentity, stored_value: StoredValue):
+    def update(self, vid: ValueIdentity, stored_value: Optional[StoredValue]):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
         # This can still fail to be atomic because of bugs
@@ -60,6 +74,8 @@ class DumboOnlineCache:
         existing_vid = self.value_id_to_vid.get(id(stored_value.value)) if stored_value is not None else None
         if existing_vid is not None:
             if existing_vid is not vid:
+                # is not is very strict (vs !=) but that's okay.
+
                 # ERROR: Value has already been linked to another vid.
                 raise AttributeError(
                     f"{vid} has same value as {existing_vid}!"
@@ -72,11 +88,11 @@ class DumboOnlineCache:
         if existing_value is not None:
             del self.value_id_to_vid[id(existing_value.value)]
 
-        if existing_vid is None:
-            self.value_id_to_vid[id(stored_value.value)] = vid
-
         if stored_value is not None:
             self.vid_to_value[vid] = stored_value
+
+            if existing_vid is None:
+                self.value_id_to_vid[id(stored_value.value)] = vid
         else:
             del self.vid_to_value[vid]
             self.tag_to_vid.del_value(vid)
@@ -85,7 +101,7 @@ class DumboOnlineCache:
         # Fingerprints/hashes can change and named values can be reloaded
         # using initialization code.
         if isinstance(vid, ValueCIDIdentity):
-            assert isinstance(stored_value, StoredResult)
+            assert stored_value is None or isinstance(stored_value, StoredResult)
             self.persisted_cache.update(vid, stored_value)
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
@@ -102,4 +118,4 @@ class DumboOnlineCache:
         if tag_vid is None:
             return None
 
-        return self.get_stored_value(tag_vid)
+        return self.get_stored_result(tag_vid)

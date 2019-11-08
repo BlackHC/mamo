@@ -21,15 +21,6 @@ class ValueNameIdentity(ValueIdentity):
 
 
 @dataclass(unsafe_hash=True)
-class ValueFingerprintIdentity(ValueIdentity):
-    qualified_type_name: str
-    fingerprint: object
-
-    def get_external_info(self):
-        return f"{self.qualified_type_name}_{self.fingerprint}"
-
-
-@dataclass(unsafe_hash=True)
 class FingerprintDigest:
     digest: object
 
@@ -44,6 +35,15 @@ class FingerprintDigestValue(FingerprintDigest):
 
     def __hash__(self):
         return super().__hash__()
+
+
+@dataclass(unsafe_hash=True)
+class ValueFingerprintIdentity(ValueIdentity):
+    qualified_type_name: str
+    fingerprint: FingerprintDigest
+
+    def get_external_info(self):
+        return f"{self.qualified_type_name}_{self.fingerprint}"
 
 
 @dataclass(unsafe_hash=True)
@@ -79,6 +79,14 @@ class CallIdentity:
 
 
 @dataclass(unsafe_hash=True)
+class CallFingerprint:
+    function: FunctionFingerprint
+    args: Tuple[Optional[FunctionFingerprint]]
+    kwargs: FrozenSet[Tuple[str, Optional[FunctionFingerprint]]]
+
+
+# TODO: merge this into CallIdentity?
+@dataclass(unsafe_hash=True)
 class ValueCIDIdentity(ValueIdentity):
     cid: CallIdentity
 
@@ -110,4 +118,4 @@ class StoredValue(Generic[T]):
 @dataclass
 class StoredResult(StoredValue[T]):
     value: T
-    func_fingerprint: FunctionFingerprint
+    call_fingerprint: CallFingerprint
