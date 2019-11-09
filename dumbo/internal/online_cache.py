@@ -1,15 +1,18 @@
 from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult, CallFingerprint
 from dumbo.internal.persisted_cache import DumboPersistedCache
-from typing import Dict, Any, Optional
+from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
 
 
+# TODO: use weaksets!
 # TODO: to repr method
 class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
+
     vid_to_value: Dict[ValueIdentity, StoredValue]
     value_id_to_vid: Dict[int, ValueIdentity]
     tag_to_vid: DictBimap[str, ValueIdentity]
+    stale_values: Set[int]
 
     def __init__(self, persisted_cache):
         self.persisted_cache = persisted_cache
@@ -17,6 +20,7 @@ class DumboOnlineCache:
         self.vid_to_value = {}
         self.value_id_to_vid = {}
         self.tag_to_vid = DictBimap()
+        self.stale_values = set()
 
     def has_vid(self, vid):
         return vid in self.vid_to_value or self.persisted_cache.has_vid(vid)
@@ -87,6 +91,7 @@ class DumboOnlineCache:
         # Unlink existing value.
         if existing_value is not None:
             del self.value_id_to_vid[id(existing_value.value)]
+            self.stale_values.add(id(existing_value.value))
 
         if stored_value is not None:
             self.vid_to_value[vid] = stored_value
@@ -103,6 +108,9 @@ class DumboOnlineCache:
         if isinstance(vid, ValueCIDIdentity):
             assert stored_value is None or isinstance(stored_value, StoredResult)
             self.persisted_cache.update(vid, stored_value)
+
+    def is_stale(self, value):
+        return id(value) in self.stale_values
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         if vid is not None and vid not in self.vid_to_value:

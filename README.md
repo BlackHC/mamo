@@ -210,7 +210,7 @@ And support aliases? So I can store a computation and retrieve it using an alias
 
 Also:
 * [x] add support for tagging value cids!
-* [ ] add an is_stale check for the computational graph
+* [ ] add an is_stale_call check for the computational graph
 
 ## All registries ought to be merged probably
 
@@ -327,3 +327,10 @@ Which sounds like a sensible thing to have.
 ## Staleness/call fingerprints
 
 Because we are using an object-aware database, only stale entries will cause duplications of fingerprints. Staleness becomes a "simple" check if these call fingerprints match or not.
+
+Biggest issue:
+
+I'm storing func pointers now, but they won't re-resolve on autoreload.
+This can be fixed by not using CIDs but by using function ids to func objects.
+As soon as the function is wrapped again within dumbo, the association will be updated.
+

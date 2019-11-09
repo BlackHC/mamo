@@ -50,3 +50,15 @@ def get_cached_value_identities(persisted=False):
 
     # TODO: convert to dicts?
     return vids
+
+
+def is_stale(value, *, depth=1):
+    _ensure_dumbo_init()
+
+    return main.dumbo.is_stale(value, depth=depth)
+
+
+def forget(value):
+    _ensure_dumbo_init()
+
+    main.dumbo.forget(value)

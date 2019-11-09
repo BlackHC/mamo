@@ -57,7 +57,7 @@ class CellIdentity(FunctionIdentity):
 
 
 # We keep this separate from FunctionIdentity, so as to cache by identity
-# and determine staleness using finerprints.
+# and determine staleness using fingerprints.
 # (Otherwise, we lack a key to index with.)
 @dataclass(unsafe_hash=True)
 class FunctionFingerprint:
@@ -81,8 +81,8 @@ class CallIdentity:
 @dataclass(unsafe_hash=True)
 class CallFingerprint:
     function: FunctionFingerprint
-    args: Tuple[Optional[FunctionFingerprint]]
-    kwargs: FrozenSet[Tuple[str, Optional[FunctionFingerprint]]]
+    args: Tuple[Optional["CallFingerprint"]]
+    kwargs: FrozenSet[Tuple[str, Optional["CallFingerprint"]]]
 
 
 # TODO: merge this into CallIdentity?

@@ -98,7 +98,7 @@ class ModuleRegistry:
         # and having a proxy breaks that.
         # The general rule is that one should not dumbo 'None' results
 
-        # TODO: raise or log?
+        # TODO: raise or log? (probably throw because it breaks staleness etc?)
         if value is None:
             return None
 
