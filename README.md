@@ -322,7 +322,7 @@ Which sounds like a sensible thing to have.
 * [x] Need FingerprintWValue that has custom hash
 * [x] add call fingerprint that also fingerprints args etc so we can determine staleness
 * [x] add tests for callfingerprint staleness
-* [ ] add support for forgetting cells as well
+* [x] add support for forgetting cells as well
 
 ## Staleness/call fingerprints
 

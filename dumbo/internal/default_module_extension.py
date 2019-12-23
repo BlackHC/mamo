@@ -1,4 +1,3 @@
-import sys
 import pickle
 from dataclasses import dataclass
 
@@ -30,13 +29,13 @@ class CachedTuple(CachedValue):
 
 class DefaultObjectSaver(ObjectSaver):
     def __init__(self, value, pickled_bytes):
-        self.value = value
+        super().__init__(value)
         self.pickled_bytes = pickled_bytes
 
     def get_estimated_size(self) -> Optional[int]:
         return len(self.pickled_bytes)
 
-    def compute_digest(self):
+    def compute_digest_(self):
         return hashlib.md5(self.pickled_bytes).digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
@@ -52,13 +51,14 @@ class DefaultObjectSaver(ObjectSaver):
 
 
 class DefaultTupleObjectSaver(ObjectSaver):
-    def __init__(self, object_savers: Tuple[ObjectSaver]):
+    def __init__(self, value, object_savers: Tuple[ObjectSaver]):
+        super().__init__(value)
         self.object_savers = object_savers
 
     def get_estimated_size(self) -> int:
         return sum(object_saver.get_estimated_size() for object_saver in self.object_savers)
 
-    def compute_digest(self):
+    def compute_digest_(self):
         hash_method = hashlib.md5()
         for object_saver in self.object_savers:
             hash_method.update(object_saver.compute_digest())
@@ -90,6 +90,7 @@ class DefaultModuleExtension(ModuleExtension):
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         if isinstance(value, tuple):
             return DefaultTupleObjectSaver(
+                value,
                 tuple(
                     self.module_registry.get_object_saver(item)
                     for item in value
@@ -118,4 +119,6 @@ class DefaultModuleExtension(ModuleExtension):
         if not isinstance(value, objproxies.ObjectProxy):
             return objproxies.ObjectProxy(value)
 
+        # If the value is already wrapped, create a new proxy.
+        # This is consistent with returning views and might help avoid bugs when we disable extensions?
         return objproxies.ObjectProxy(value.__subject__)

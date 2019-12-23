@@ -24,12 +24,13 @@ class NumpyExternallyCachedValue(ExternallyCachedValue):
 
 class NumpyObjectSaver(ObjectSaver):
     def __init__(self, value):
+        super().__init__(value)
         self.value = value
 
     def get_estimated_size(self) -> Optional[int]:
         return self.value.nbytes
 
-    def compute_digest(self):
+    def compute_digest_(self):
         return hashlib.md5(self.value).digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:

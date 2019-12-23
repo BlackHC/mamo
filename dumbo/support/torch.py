@@ -23,12 +23,13 @@ class TorchExternallyCachedValue(ExternallyCachedValue):
 
 class TorchObjectSaver(ObjectSaver):
     def __init__(self, value: th.Tensor):
+        super().__init__(value)
         self.value = value
 
     def get_estimated_size(self) -> Optional[int]:
         return self.value.numel() * self.value.element_size()
 
-    def compute_digest(self):
+    def compute_digest_(self):
         return hashlib.md5(self.value.numpy()).digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:

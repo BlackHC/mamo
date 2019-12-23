@@ -25,17 +25,15 @@ from dumbo.internal.persisted_cache import DumboPersistedCache
 
 from dumbo.internal import default_module_extension
 
-# Install the default module extension.
 from dumbo.internal.reflection import FunctionDependencies
 
+# Install the default module extension.
 MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
 
 
 class Dumbo:
     # TODO: use weak dicts!
     code_object_deps: Dict[CodeType, FunctionDependencies]
-    # TODO: make use of this dict!!
-    # vids_deps: Dict[object, ValueIdentity]
     # If not None, allows for deep function fingerprinting.
     deep_fingerprint_source_prefix: Optional[str]
     deep_fingerprint_stack: Set[CodeType]
@@ -174,27 +172,27 @@ class Dumbo:
         self.online_cache.flush()
 
     def is_stale(self, func, args, kwargs):
-        fid = dumbo._identify_function(func)
-        cid = dumbo._identify_call(fid, args, kwargs)
+        func_fingerprint = self._get_function_fingerprint(func)
+
+        fid = self._identify_function(func)
+        cid = self._identify_call(fid, args, kwargs)
+        call_fingerprint = self._get_call_fingerprint(cid, func_fingerprint)
+
         vid = ValueCIDIdentity(cid)
-
-        func_fingerprint = dumbo._get_function_fingerprint(func)
-
-        call_fingerprint = dumbo._get_call_fingerprint(cid, func_fingerprint)
-        stored_call_fingerprint = dumbo.online_cache.get_call_fingerprint(vid)
+        stored_call_fingerprint = self.online_cache.get_call_fingerprint(vid)
 
         return call_fingerprint != stored_call_fingerprint
 
     def is_cached(self, func, args, kwargs):
-        fid = dumbo._identify_function(func)
-        cid = dumbo._identify_call(fid, args, kwargs)
+        fid = self._identify_function(func)
+        cid = self._identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
         return self.online_cache.has_vid(vid)
 
     def forget(self, func, args, kwargs):
-        fid = dumbo._identify_function(func)
-        cid = dumbo._identify_call(fid, args, kwargs)
+        fid = self._identify_function(func)
+        cid = self._identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
         self.online_cache.update(vid, None)
@@ -298,6 +296,7 @@ class Dumbo:
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.
         self.online_cache.update(ValueNameIdentity(unique_name), StoredValue(value))
+        return value
 
     def tag(self, tag_name, value):
         # Value should exist in the cache.

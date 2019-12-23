@@ -27,7 +27,7 @@ class FingerprintDigest:
 class FingerprintDigestValue(FingerprintDigest):
     """`FingerprintDigest` that carries its original value to be more informative.
 
-    For all purposes, we ignore the actual value for hashing etc."""
+    For all purposes, we ignore the actual value for hashing and use the provided digest."""
     value: object
 
     def __eq__(self, other):
@@ -53,18 +53,19 @@ class FunctionIdentity:
 
 @dataclass(frozen=True)
 class CellIdentity(FunctionIdentity):
+    """Cells don't have an identity beyond their code."""
     fingerprint: object
 
 
 # We keep this separate from FunctionIdentity, so as to cache by identity
-# and determine staleness using finerprints.
-# (Otherwise, we lack a key to index with.)
+# and determine staleness using fingerprints.
+# (Otherwise, we lack a key to index with and find stale entries.)
 @dataclass(frozen=True)
 class FunctionFingerprint:
     fingerprint: object
 
 
-# Runtime dependencies.
+# Includes dependencies.
 @dataclass(frozen=True)
 class DeepFunctionFingerprint(FunctionFingerprint):
     global_loads: FrozenSet[Tuple[Tuple[str, ...], ValueIdentity]]
@@ -91,7 +92,7 @@ class ValueCIDIdentity(ValueIdentity):
     cid: CallIdentity
 
     def get_external_info(self):
-        # TODO: maybe convert get_external_info into a vistor pattern?
+        # TODO: maybe convert get_external_info into a visitor pattern?
 
         # Look at arguments.
         # Do we have any named ones?

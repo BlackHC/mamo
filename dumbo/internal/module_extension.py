@@ -11,15 +11,27 @@ T = TypeVar("T")
 
 MAX_FINGERPRINT_LENGTH = 1024
 
+MISSING_DIGEST = object()
+
 
 class ObjectSaver:
+    def __init__(self, value):
+        self.value = value
+        self.digest = MISSING_DIGEST
+
     def get_estimated_size(self) -> Optional[int]:
         """Returns None if the size couldn't be estimated."""
         raise NotImplementedError()
 
-    def compute_digest(self):
+    def compute_digest_(self):
         """Returns None if the digest couldn't be created."""
         raise NotImplementedError()
+
+    def compute_digest(self):
+        if self.digest is MISSING_DIGEST:
+            self.digest = self.compute_digest_()
+
+        return self.digest
 
     def compute_fingerprint(self):
         """Returns None if the fingerprint couldn't be created."""
