@@ -102,9 +102,14 @@ class DumboPersistedCache:
     def try_create_cached_value(
         self, vid: ValueCIDIdentity, stored_result: StoredResult
     ) -> Optional[StoredResult[CachedValue]]:
-        estimated_size = MODULE_EXTENSIONS.get_estimated_size(stored_result.value)
+        object_saver = MODULE_EXTENSIONS.get_object_saver(stored_result.value)
+        if object_saver is None:
+            # TODO: log?
+            return None
+
+        estimated_size = object_saver.get_estimated_size()
         if estimated_size is None:
-            # TODO log?
+            # TODO: log?
             return None
 
         external_path_builder = None
@@ -115,10 +120,12 @@ class DumboPersistedCache:
                 self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
             )
 
-        cached_value = MODULE_EXTENSIONS.cache_value(stored_result.value, external_path_builder)
+        cached_value = object_saver.cache_value(external_path_builder)
+        if cached_value is None:
+            # TODO: log?
+            return None
 
-        # TODO: handle cached_value is None and log?!!
-        return StoredResult(cached_value, stored_result.func_fingerprint)
+        return StoredResult(cached_value, stored_result.call_fingerprint)
 
     def update(self, vid: ValueCIDIdentity, value: StoredResult):
         with self.transaction_manager:
@@ -144,10 +151,13 @@ class DumboPersistedCache:
                     if existing_cached_value:
                         del self.storage.vid_to_cached_value[vid]
 
+    def get_cached_vids(self):
+        return self.storage.vid_to_cached_value.keys()
+
     def get_cached_value(self, vid) -> Optional[StoredResult[CachedValue]]:
         return self.storage.vid_to_cached_value.get(vid)
 
-    def get_stored_result(self, vid):
+    def get_stored_result(self, vid) -> Optional[StoredResult]:
         cached_value = self.get_cached_value(vid)
         if cached_value is None:
             return None
@@ -155,7 +165,7 @@ class DumboPersistedCache:
         # Load value
         loaded_value = cached_value.value.load()
         wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
-        return StoredResult(wrapped_value, cached_value.func_fingerprint)
+        return StoredResult(wrapped_value, cached_value.call_fingerprint)
 
     def tag(self, tag_name: str, vid: ValueCIDIdentity):
         if vid is not None and vid not in self.storage.vid_to_cached_value:
@@ -167,3 +177,6 @@ class DumboPersistedCache:
 
     def get_tag_vid(self, tag_name) -> Optional[ValueCIDIdentity]:
         return self.storage.tag_to_vid.get_value(tag_name)
+
+    def has_vid(self, vid):
+        return vid in self.storage.vid_to_cached_value

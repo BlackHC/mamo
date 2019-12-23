@@ -302,10 +302,28 @@ We could use a decorator or context manager.
 
 As an API it might be neat to have a way to mark stale entries for recomputation via C&P in Jupyter.
 
+We could mark staleness at least and then flag it up in later calls.
+
+(So keep a dirty flag in the online version of any loaded value.)
+
 ## Do we want recompute by default or reuse by default?
 
-In a Jupyter setting, we might be okay with recomputing a direct call but using stale data for indirect calls.
+In a Jupyter setting, we might be okay with recomputing a direct call by using stale data for indirect calls.
 In a script setting, we might be okay with recomputing by default.
 
 In general, we might be okay with recomputing by default only if it takes less than a certain time.
 Which sounds like a sensible thing to have.
+
+## New sprint
+
+* [x] use pickle for get_estimated_size (given that we will usually pickle/serialize later anyway!!!)
+* [x] ValueFingerprint plus general code.
+* [x] add get_cached_value_identities.
+* [x] Need FingerprintWValue that has custom hash
+* [x] add call fingerprint that also fingerprints args etc so we can determine staleness
+* [x] add tests for callfingerprint staleness
+* [ ] add support for forgetting cells as well
+
+## Staleness/call fingerprints
+
+Because we are using an object-aware database, only stale entries will cause duplications of fingerprints. Staleness becomes a "simple" check if these call fingerprints match or not.

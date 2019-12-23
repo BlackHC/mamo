@@ -4,6 +4,8 @@ from typing import Tuple, FrozenSet, Optional, Generic, TypeVar
 
 T = TypeVar("T")
 
+# TODO: can we freeze the fields? (and not use unsafe_hash=True)?
+
 
 class ValueIdentity:
     def get_external_info(self):
@@ -19,9 +21,26 @@ class ValueNameIdentity(ValueIdentity):
 
 
 @dataclass(unsafe_hash=True)
+class FingerprintDigest:
+    digest: object
+
+
+@dataclass(unsafe_hash=False)
+class FingerprintDigestValue(FingerprintDigest):
+    """`FingerprintDigest that carries its original value to be more informative."""
+    value: object
+
+    def __eq__(self, other):
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return super().__hash__()
+
+
+@dataclass(unsafe_hash=True)
 class ValueFingerprintIdentity(ValueIdentity):
     qualified_type_name: str
-    fingerprint: int
+    fingerprint: FingerprintDigest
 
     def get_external_info(self):
         return f"{self.qualified_type_name}_{self.fingerprint}"
@@ -42,7 +61,7 @@ class CellIdentity(FunctionIdentity):
 # (Otherwise, we lack a key to index with.)
 @dataclass(unsafe_hash=True)
 class FunctionFingerprint:
-    fingerprint: int
+    fingerprint: object
 
 
 # Runtime dependencies.
@@ -59,6 +78,14 @@ class CallIdentity:
     kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
 
 
+@dataclass(unsafe_hash=True)
+class CallFingerprint:
+    function: FunctionFingerprint
+    args: Tuple[Optional[FunctionFingerprint]]
+    kwargs: FrozenSet[Tuple[str, Optional[FunctionFingerprint]]]
+
+
+# TODO: merge this into CallIdentity?
 @dataclass(unsafe_hash=True)
 class ValueCIDIdentity(ValueIdentity):
     cid: CallIdentity
@@ -91,4 +118,4 @@ class StoredValue(Generic[T]):
 @dataclass
 class StoredResult(StoredValue[T]):
     value: T
-    func_fingerprint: FunctionFingerprint
+    call_fingerprint: CallFingerprint

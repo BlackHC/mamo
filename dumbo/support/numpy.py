@@ -8,6 +8,7 @@ from dumbo.api_support import (
     ExternallyCachedValue,
     MAX_FINGERPRINT_LENGTH,
     ModuleExtension,
+    ObjectSaver,
     ExternallyCachedFilePath,
     CachedValue,
     MODULE_EXTENSIONS,
@@ -21,26 +22,34 @@ class NumpyExternallyCachedValue(ExternallyCachedValue):
         return np.load(self.path, "r")
 
 
+class NumpyObjectSaver(ObjectSaver):
+    def __init__(self, value):
+        self.value = value
+
+    def get_estimated_size(self) -> Optional[int]:
+        return self.value.nbytes
+
+    def compute_digest(self):
+        return hashlib.md5(self.value).digest()
+
+    def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
+        if external_path_builder is None:
+            return DBCachedValue(self.value)
+
+        shape_info = "_".join(map(str, self.value.shape))
+        external_path = external_path_builder.build(shape_info, "npy")
+
+        np.save(external_path, self.value)
+
+        return NumpyExternallyCachedValue(external_path)
+
+
 class NumpyModuleExtension(ModuleExtension):
     def supports(self, value) -> bool:
         return isinstance(value, np_types)
 
-    def compute_fingerprint(self, value):
-        return hashlib.md5(value).digest()
-
-    def get_estimated_size(self, value) -> Optional[int]:
-        return value.nbytes
-
-    def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
-        if external_path_builder is None:
-            return DBCachedValue(value)
-
-        shape_info = "_".join(map(str, value.shape))
-        external_path = external_path_builder.build(shape_info, "npy")
-
-        np.save(external_path, value)
-
-        return NumpyExternallyCachedValue(external_path)
+    def get_object_saver(self, value) -> Optional[ObjectSaver]:
+        return NumpyObjectSaver(value)
 
     def wrap_return_value(self, value):
         # We also make value readonly.

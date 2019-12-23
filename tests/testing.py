@@ -4,9 +4,9 @@ from typing import Optional
 from _pytest.fixtures import fixture
 
 import dumbo
-import dumbo.internal.cached_values
 from dumbo.internal import persisted_cache, main
-from dumbo.internal.identities import ValueIdentity
+from dumbo.internal.cached_values import DBCachedValue
+from dumbo.internal.identities import ValueIdentity, StoredResult
 
 
 @dataclass
@@ -21,10 +21,10 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.tag_to_vid = {}
 
     def try_create_cached_value(self, vid, stored_result):
-        return dumbo.internal.cached_values.DBCachedValue(stored_result)
+        return StoredResult(DBCachedValue(stored_result), stored_result.call_fingerprint)
 
     def update(self, vid, value):
-        self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value)
+        self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value) if value is not None else None
 
     def get_cached_value(self, vid):
         return self.vid_to_cached_value.get(vid)

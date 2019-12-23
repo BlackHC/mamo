@@ -2,10 +2,40 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
 from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue
+from dumbo.internal.identities import FingerprintDigest, FingerprintDigestValue
 from dumbo.internal.reflection import get_module_name
 
 
+T = TypeVar("T")
+
+
 MAX_FINGERPRINT_LENGTH = 1024
+
+
+class ObjectSaver:
+    def get_estimated_size(self) -> Optional[int]:
+        """Returns None if the size couldn't be estimated."""
+        raise NotImplementedError()
+
+    def compute_digest(self):
+        """Returns None if the digest couldn't be created."""
+        raise NotImplementedError()
+
+    def compute_fingerprint(self):
+        """Returns None if the fingerprint couldn't be created."""
+        digest = self.compute_digest()
+        if digest is None:
+            # TODO: log?
+            return None
+
+        estimated_size = self.get_estimated_size()
+        if estimated_size is not None and estimated_size <= MAX_FINGERPRINT_LENGTH:
+            return FingerprintDigestValue(digest, self.value)
+        return FingerprintDigest(digest)
+
+    def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
+        """Returns None if the value couldn't be cached."""
+        raise NotImplementedError()
 
 
 @dataclass
@@ -15,24 +45,13 @@ class ModuleExtension:
     def supports(self, value) -> bool:
         raise NotImplementedError()
 
-    def compute_fingerprint(self, value):
-        """Returns None if the fingerprint couldn't be created."""
-        raise NotImplementedError()
-
-    def get_estimated_size(self, value) -> Optional[int]:
-        """Returns None if the size couldn't be estimated."""
-        raise NotImplementedError()
-
-    def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
-        """Returns None if the value couldn't be cached."""
+    def get_object_saver(self, value) -> Optional[ObjectSaver]:
+        """Returns an `ObjectSaver` or None if it couldn't be created."""
         raise NotImplementedError()
 
     def wrap_return_value(self, value):
         """Returns None if the value couldn't be wrapped."""
         raise NotImplementedError()
-
-
-T = TypeVar("T")
 
 
 @dataclass
@@ -62,34 +81,15 @@ class ModuleRegistry:
             value_supported = self.default_extension.supports(value)
         return value_supported
 
-    def compute_fingerprint(self, value):
+    def get_object_saver(self, value) -> ObjectSaver:
         extension = self.get(value)
-        fingerprint = None
+        object_saver = None
         if extension is not None and extension.supports(value):
-            fingerprint = extension.compute_fingerprint(value)
-        if fingerprint is None:
-            fingerprint = self.default_extension.compute_fingerprint(value)
-        return fingerprint
+            object_saver = extension.get_object_saver(value)
 
-    def get_estimated_size(self, value) -> Optional[int]:
-        extension = self.get(value)
-        estimated_size = None
-        if extension is not None and extension.supports(value):
-            estimated_size = extension.get_estimated_size(value)
-
-        if estimated_size is None:
-            estimated_size = self.default_extension.get_estimated_size(value)
-        return estimated_size
-
-    def cache_value(self, value, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
-        extension = self.get(value)
-        cached_value = None
-        if extension is not None and extension.supports(value):
-            cached_value = extension.cache_value(value, external_path_builder)
-
-        if cached_value is None:
-            cached_value = self.default_extension.cache_value(value, external_path_builder)
-        return cached_value
+        if object_saver is None:
+            object_saver = self.default_extension.get_object_saver(value)
+        return object_saver
 
     def wrap_return_value(self, value):
         # We cannot really do anything about None sadly.

@@ -7,11 +7,13 @@ from dumbo.internal import main
 from dumbo.internal.identities import ValueNameIdentity
 
 from tests.testing import BoxedValue
+# noinspection PyUnresolvedReferences
 from tests.testing import dumbo_fixture
 from _pytest.fixtures import fixture
 
 
 dumbo_fib: FunctionType = None
+get_global_var: FunctionType = None
 
 
 def unwrapped_fib(n):
@@ -22,6 +24,13 @@ def unwrapped_fib(n):
     return dumbo_fib(n - 1) + dumbo_fib(n - 2)
 
 
+global_var = None
+
+
+def unwrapped_get_global_var(offset):
+    return global_var + offset
+
+
 @fixture
 def dumbo_fib_fixture(dumbo_fixture):
     global dumbo_fib
@@ -30,11 +39,24 @@ def dumbo_fib_fixture(dumbo_fixture):
     dumbo_fib = None
 
 
+@fixture
+def dumbo_get_global_var_fixture(dumbo_fixture):
+    global get_global_var
+    get_global_var = dumbo.dumbo(unwrapped_get_global_var)
+    yield dumbo_fib
+    get_global_var = None
+
+
 def test_dumbo_fib(dumbo_fib_fixture):
     result = dumbo_fib(8)
     assert result == 34
     assert len(main.dumbo.online_cache.value_id_to_vid) == 9
     assert len(main.dumbo.online_cache.vid_to_value) == 9
+
+    assert len(dumbo.get_cached_value_identities(False)) == 9
+    dumbo.flush_online_cache()
+    assert len(dumbo.get_cached_value_identities(False)) == 0
+    assert len(dumbo.get_cached_value_identities(True)) == 9
 
 
 def test_dumbo_can_wrap_uninitialized():
@@ -67,6 +89,26 @@ def test_dumbo_register_external_value(dumbo_fib_fixture):
     dumbo.register_external_value(unique_name, None)
 
     assert dumbo.get_external_value(unique_name) is None
+
+
+def test_is_cached_is_stale(dumbo_get_global_var_fixture):
+    global global_var
+    global_var = 1
+
+    assert not get_global_var.is_cached(5)
+    assert get_global_var.is_stale(5)
+
+    assert get_global_var(5) == 6
+    assert get_global_var.is_cached(5)
+    assert not get_global_var.is_stale(5)
+
+    global_var = 2
+
+    assert get_global_var.is_cached(5)
+    assert not get_global_var.is_stale(5)
+
+    get_global_var.forget(5)
+    assert get_global_var(5) == 7
 
 
 def test_dumbo_tag(dumbo_fib_fixture):
