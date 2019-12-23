@@ -64,6 +64,14 @@ class DumboPersistedCache:
             path = "./"
         if externally_cached_path is None:
             externally_cached_path = path
+
+        # Create directories if they haven't been created yet.
+        os.makedirs(path, exist_ok=True)
+        os.makedirs(externally_cached_path, exist_ok=True)
+
+        # TODO: log the paths?
+        # TODO: in general, make properties available for quering in the console/Jupyter?
+
         db = DB(FileStorage(os.path.join(path, "dumbo_persisted_cache")))
         return DumboPersistedCache(db, path, externally_cached_path)
 
