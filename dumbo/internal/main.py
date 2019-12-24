@@ -86,8 +86,15 @@ class Dumbo:
             resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
             resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
 
+            def identify_value(value):
+                vid = self._identify_value(value)
+
+                if isinstance(vid, ValueCIDIdentity):
+                    return vid, self._get_call_fingerprint(vid, depth=-1)
+                return vid
+
             global_vids = {
-                qn: self._identify_value(resolved_global) if resolved_global else None
+                qn: identify_value(resolved_global) if resolved_global else None
                 for qn, resolved_global in resolved_globals.items()
             }
             global_funcs = {

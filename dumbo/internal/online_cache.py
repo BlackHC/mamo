@@ -12,6 +12,8 @@ class DumboOnlineCache:
     vid_to_value: Dict[ValueIdentity, StoredValue]
     value_id_to_vid: Dict[int, ValueIdentity]
     tag_to_vid: DictBimap[str, ValueIdentity]
+    # We need to keep track of unlinked values to be able to tell that they are stale now!
+    # TODO: use a weakset!
     stale_values: Set[int]
 
     def __init__(self, persisted_cache):

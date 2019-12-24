@@ -158,6 +158,31 @@ def test_is_cached_is_stale_arg_change(dumbo_get_global_var_fixture):
     assert not dumbo.is_stale(outer_result_new)
 
 
+def test_staless_cyclic_global(dumbo_get_global_var_fixture):
+    # Enable deep signatures.
+    main.dumbo.deep_fingerprint_source_prefix = ""
+
+    global global_var
+
+    global_var = 1
+
+    assert not get_global_var.is_cached(1)
+    assert get_global_var.is_stale(1)
+
+    global_var = get_global_var(1)
+
+    assert get_global_var.is_stale(1)
+    assert dumbo.is_stale(global_var)
+
+    @dumbo.dumbo
+    def outer(b):
+        return b + global_var
+
+    result = outer(1)
+
+    # Outer should be considered stale because global_var is stale.
+    assert dumbo.is_stale(result, depth=-1)
+
 
 def test_dumbo_tag(dumbo_fib_fixture):
     result = dumbo_fib(10)

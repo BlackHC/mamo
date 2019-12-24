@@ -334,3 +334,13 @@ I'm storing func pointers now, but they won't re-resolve on autoreload.
 This can be fixed by not using CIDs but by using function ids to func objects.
 As soon as the function is wrapped again within dumbo, the association will be updated.
 
+## Random observation
+
+Depending on a global variable that depends on the same function does not result in staleness.
+Because we cut cyclic dependencies (as we simulate one call stack instead of allowing for different ones.)
+
+## Reflection on the state of Dumbo
+
+Coming back to this code after a somewhat longer break: it is difficult to understand what's going on with the call logic.
+
+The semantics of everything here is a mess :(
