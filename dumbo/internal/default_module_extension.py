@@ -120,5 +120,6 @@ class DefaultModuleExtension(ModuleExtension):
             return objproxies.ObjectProxy(value)
 
         # If the value is already wrapped, create a new proxy.
-        # This is consistent with returning views and might help avoid bugs when we disable extensions?
+        # This is necessary so that if we pass the same object through nested dumbo functions
+        # the result doesn't share identities (which is important for staleness!)
         return objproxies.ObjectProxy(value.__subject__)

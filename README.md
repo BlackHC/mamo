@@ -344,3 +344,27 @@ Because we cut cyclic dependencies (as we simulate one call stack instead of all
 Coming back to this code after a somewhat longer break: it is difficult to understand what's going on with the call logic.
 
 The semantics of everything here is a mess :(
+
+## Revisiting the semantics and goals of Dumbo
+
+The big and main question is:
+
+Do I need to recompute a value because something has changed?
+
+We have a computational graph of values. The identity of leaves is value-based and we can use hashes/digests to test equality.
+
+The identity of other nodes is based on the call graph. The result of a computation is based on the actual value and not the graph though.
+
+Maybe we don't want to/need to always compute digests
+
+With value digests, we can determine if we actually need to recompute a function.
+With the call graph, we can determine if a node is stale.
+
+I forgot that the cache is only storing inner nodes.
+
+Philosophically, I'm confounding multiple things.
+
+How do I look up cached results? Vs staleness?
+
+Each arg can be a node in the comp graph. So the key is the actual node in the call graph.
+

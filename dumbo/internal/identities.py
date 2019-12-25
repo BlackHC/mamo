@@ -82,6 +82,7 @@ class CallIdentity:
 @dataclass(frozen=True)
 class CallFingerprint:
     function: FunctionFingerprint
+    # Need fingerprints everywhere! This needs to be a separate hierarchy!
     args: Tuple[Optional["CallFingerprint"]]
     kwargs: FrozenSet[Tuple[str, Optional["CallFingerprint"]]]
 
