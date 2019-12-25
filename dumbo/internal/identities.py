@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Tuple, FrozenSet, Optional, Generic, TypeVar
 
+from dumbo.internal.fingerprints import FingerprintDigest, Fingerprint, CallFingerprint
 
 T = TypeVar("T")
 
@@ -19,28 +20,9 @@ class ValueNameIdentity(ValueIdentity):
 
 
 @dataclass(frozen=True)
-class FingerprintDigest:
-    digest: object
-
-
-@dataclass(frozen=True)
-class FingerprintDigestValue(FingerprintDigest):
-    """`FingerprintDigest` that carries its original value to be more informative.
-
-    For all purposes, we ignore the actual value for hashing and use the provided digest."""
-    value: object
-
-    def __eq__(self, other):
-        return super().__eq__(other)
-
-    def __hash__(self):
-        return super().__hash__()
-
-
-@dataclass(frozen=True)
 class ValueFingerprintIdentity(ValueIdentity):
     qualified_type_name: str
-    fingerprint: FingerprintDigest
+    fingerprint: Fingerprint
 
     def get_external_info(self):
         return f"{self.qualified_type_name}_{self.fingerprint}"
@@ -57,34 +39,11 @@ class CellIdentity(FunctionIdentity):
     fingerprint: object
 
 
-# We keep this separate from FunctionIdentity, so as to cache by identity
-# and determine staleness using fingerprints.
-# (Otherwise, we lack a key to index with and find stale entries.)
-@dataclass(frozen=True)
-class FunctionFingerprint:
-    fingerprint: object
-
-
-# Includes dependencies.
-@dataclass(frozen=True)
-class DeepFunctionFingerprint(FunctionFingerprint):
-    global_loads: FrozenSet[Tuple[Tuple[str, ...], ValueIdentity]]
-    func_calls: FrozenSet[Tuple[Tuple[str, ...], Optional[Tuple[FunctionIdentity, FunctionFingerprint]]]]
-
-
 @dataclass(frozen=True)
 class CallIdentity:
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
     kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
-
-
-@dataclass(frozen=True)
-class CallFingerprint:
-    function: FunctionFingerprint
-    # Need fingerprints everywhere! This needs to be a separate hierarchy!
-    args: Tuple[Optional["CallFingerprint"]]
-    kwargs: FrozenSet[Tuple[str, Optional["CallFingerprint"]]]
 
 
 # TODO: merge this into CallIdentity?

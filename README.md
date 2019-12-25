@@ -368,3 +368,9 @@ How do I look up cached results? Vs staleness?
 
 Each arg can be a node in the comp graph. So the key is the actual node in the call graph.
 
+### Insight
+
+Memoization uses fingerprints. The staleness/the computational graph uses identities.
+
+Both hierarchies need to be separate and independent from each other.
+

@@ -6,6 +6,7 @@ from dumbo.internal import reflection
 from functools import wraps
 
 # Usually, Pythonistas don't like base classes. They know nothing.
+from dumbo.internal.fingerprints import FingerprintFactory
 from dumbo.internal.identities import (
     ValueNameIdentity,
     ValueFingerprintIdentity,
@@ -13,8 +14,6 @@ from dumbo.internal.identities import (
     FunctionIdentity,
     CallIdentity,
     ValueIdentity,
-    FunctionFingerprint,
-    DeepFunctionFingerprint,
     StoredResult,
     StoredValue,
     CellIdentity,
@@ -33,10 +32,7 @@ MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleEx
 
 class Dumbo:
     # TODO: use weak dicts!
-    code_object_deps: Dict[CodeType, FunctionDependencies]
-    # If not None, allows for deep function fingerprinting.
-    deep_fingerprint_source_prefix: Optional[str]
-    deep_fingerprint_stack: Set[CodeType]
+    fingerprint_factory: FingerprintFactory
     fid_to_func: Dict[FunctionIdentity, FunctionType]
 
     online_cache: DumboOnlineCache
@@ -46,9 +42,7 @@ class Dumbo:
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
 
-        self.code_object_deps = {}
-        self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
-        self.deep_fingerprint_stack = set()
+        self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix)
 
         self.fid_to_func = {}
 
@@ -65,63 +59,6 @@ class Dumbo:
         if name is not None:
             return CellIdentity(name, None)
         return CellIdentity(name, reflection.get_code_object_fingerprint(code_object))
-
-    def _get_code_object_deps(self, code_object) -> FunctionDependencies:
-        code_object_deps = self.code_object_deps.get(code_object)
-        if code_object_deps is None:
-            code_object_deps = reflection.get_func_deps(code_object)
-            self.code_object_deps[code_object] = code_object_deps
-        return code_object_deps
-
-    def _get_deep_fingerprint(self, code_object, namespace):
-        if code_object in self.deep_fingerprint_stack:
-            return FunctionFingerprint(reflection.get_code_object_fingerprint(code_object))
-        self.deep_fingerprint_stack.add(code_object)
-        try:
-            # TODO: need a cache for this (also to catch recursion!!!)
-            func_deps = self._get_code_object_deps(code_object)
-
-            resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
-            resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
-
-            def identify_value(value):
-                vid = self._identify_value(value)
-
-                if isinstance(vid, ValueCIDIdentity):
-                    return vid, self._get_call_fingerprint(vid, depth=-1)
-                return vid
-
-            global_vids = {
-                qn: identify_value(resolved_global) if resolved_global else None
-                for qn, resolved_global in resolved_globals.items()
-            }
-            global_funcs = {
-                qn: (self._identify_function(resolved_func),
-                     self._get_function_fingerprint(resolved_func)) if resolved_func else None
-                for qn, resolved_func in resolved_funcs.items()
-            }
-
-            return DeepFunctionFingerprint(
-                reflection.get_code_object_fingerprint(code_object),
-                frozenset(global_vids.items()),
-                frozenset(global_funcs.items()),
-            )
-        finally:
-            self.deep_fingerprint_stack.remove(code_object)
-
-    def _get_function_fingerprint(self, func: FunctionType) -> Optional[FunctionFingerprint]:
-        if reflection.is_func_builtin(func):
-            func_fingerprint = None
-        else:
-            if hasattr(func, "dumbo_unwrapped_func"):
-                func = func.dumbo_unwrapped_func
-
-            if reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
-                func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
-            else:
-                func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
-
-        return func_fingerprint
 
     def _get_call_fingerprint(self, vid: ValueCIDIdentity, depth=1):
         # TODO: properly support cells!! (they are not registered!)
@@ -162,18 +99,7 @@ class Dumbo:
         if vid is not None:
             return vid
 
-        fingerprint = None
-        object_saver = MODULE_EXTENSIONS.get_object_saver(value)
-        if object_saver is not None:
-            fingerprint = object_saver.compute_fingerprint()
-
-        if fingerprint is None:
-            # TODO: log?
-            raise ValueError(
-                f"Cannot fingerprint {value}!"
-                " Please either add an extension to support it,"
-                " or register it with a name"
-            )
+        fingerprint = self.fingerprint_factory.fingerprint_but_not_deep(value)
 
         return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
 
