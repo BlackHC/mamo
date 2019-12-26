@@ -1,4 +1,5 @@
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult, CallFingerprint
+from dumbo.internal.fingerprints import Fingerprint
+from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
@@ -30,18 +31,17 @@ class DumboOnlineCache:
     def has_value(self, value):
         return id(value) in self.value_id_to_vid
 
-    def get_call_fingerprint(self, vid) -> Optional[CallFingerprint]:
-        assert isinstance(vid, ValueCIDIdentity)
+    def get_fingerprint(self, vid) -> Optional[Fingerprint]:
         if vid in self.vid_to_value:
-            stored_result = self.vid_to_value[vid]
+            stored_value = self.vid_to_value[vid]
         else:
-            stored_result = self.persisted_cache.get_cached_value(vid)
+            stored_value = self.persisted_cache.get_cached_value(vid)
 
-        if stored_result is not None:
-            return stored_result.call_fingerprint
+        if stored_value is not None:
+            return stored_value.fingerprint
         return None
 
-    def get_stored_result(self, vid):
+    def get_stored_value(self, vid):
         if vid in self.vid_to_value:
             return self.vid_to_value[vid]
 
@@ -129,4 +129,4 @@ class DumboOnlineCache:
         if tag_vid is None:
             return None
 
-        return self.get_stored_result(tag_vid)
+        return self.get_stored_value(tag_vid)

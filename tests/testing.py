@@ -21,7 +21,7 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.tag_to_vid = {}
 
     def try_create_cached_value(self, vid, stored_result):
-        return StoredResult(DBCachedValue(stored_result), stored_result.call_fingerprint)
+        return StoredResult(DBCachedValue(stored_result), stored_result.fingerprint)
 
     def update(self, vid, value):
         self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value) if value is not None else None

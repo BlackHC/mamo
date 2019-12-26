@@ -12,6 +12,11 @@ class FingerprintDigest(Fingerprint):
 
 
 @dataclass(frozen=True)
+class FingerprintName(Fingerprint):
+    name: str
+
+
+@dataclass(frozen=True)
 class FingerprintDigestValue(FingerprintDigest):
     """`FingerprintDigest` that carries its original value to be more informative.
 
@@ -36,7 +41,6 @@ class FunctionFingerprint(Fingerprint):
 # Includes dependencies.
 @dataclass(frozen=True)
 class DeepFunctionFingerprint(FunctionFingerprint):
-    global_loads: FrozenSet[Tuple[Tuple[str, ...], Fingerprint]]
     func_calls: FrozenSet[Tuple[Tuple[str, ...], FunctionFingerprint]]
 
 

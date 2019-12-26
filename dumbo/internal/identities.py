@@ -11,6 +11,7 @@ class ValueIdentity:
         raise NotImplementedError()
 
 
+# TODO: replace ValueNameIdentity with ValueFingerprintIdentity(FingerprintName)!
 @dataclass(frozen=True)
 class ValueNameIdentity(ValueIdentity):
     unique_name: str
@@ -73,10 +74,10 @@ class ValueCIDIdentity(ValueIdentity):
 @dataclass
 class StoredValue(Generic[T]):
     value: T
+    fingerprint: Fingerprint
 
 
 # This is kept by online and persistent cache and might later include more debug info.
 @dataclass
 class StoredResult(StoredValue[T]):
-    value: T
-    call_fingerprint: CallFingerprint
+    fingerprint: CallFingerprint

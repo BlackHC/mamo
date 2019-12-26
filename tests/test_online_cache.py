@@ -11,11 +11,13 @@ def test_doc_initial_update_works():
     persisted_cache = DummyPersistedCache()
     online_cache = DumboOnlineCache(persisted_cache)
 
+    # TODO: add register_external_value to online_cache
+
     vid = ValueNameIdentity("test")
-    value = StoredValue(BoxedValue(5))
+    value = StoredValue(BoxedValue(5), None)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_result(vid) is value
+    assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
 
 
@@ -24,16 +26,16 @@ def test_doc_updating_value_works():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueNameIdentity("test")
-    value1 = StoredValue(BoxedValue(5))
+    value1 = StoredValue(BoxedValue(5), None)
     online_cache.update(vid, value1)
 
-    assert online_cache.get_stored_result(vid) is value1
+    assert online_cache.get_stored_value(vid) is value1
     assert online_cache.get_vid(value1.value) == vid
 
-    value2 = StoredValue(BoxedValue(7))
+    value2 = StoredValue(BoxedValue(7), None)
 
     online_cache.update(vid, value2)
-    assert online_cache.get_stored_result(vid) is value2
+    assert online_cache.get_stored_value(vid) is value2
     assert online_cache.get_vid(value2.value) == vid
     assert online_cache.get_vid(value1.value) is None
 
@@ -45,10 +47,10 @@ def test_doc_updating_same_value_throws():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueNameIdentity("test")
-    value = StoredValue(BoxedValue(5))
+    value = StoredValue(BoxedValue(5), None)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_result(vid) is value
+    assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
 
     vid2 = ValueNameIdentity("test2")
@@ -61,15 +63,15 @@ def test_doc_updating_none_works():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueNameIdentity("test")
-    value = StoredValue(BoxedValue(5))
+    value = StoredValue(BoxedValue(5), None)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_result(vid) is value
+    assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
 
     online_cache.update(vid, None)
 
-    assert online_cache.get_stored_result(vid) is None
+    assert online_cache.get_stored_value(vid) is None
     assert online_cache.get_vid(value.value) is None
 
 
@@ -81,12 +83,12 @@ def test_doc_updating_none_works_cid():
     value = StoredResult(BoxedValue(5), None)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_result(vid) is value
+    assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
 
     online_cache.update(vid, None)
 
-    assert online_cache.get_stored_result(vid) is None
+    assert online_cache.get_stored_value(vid) is None
     assert online_cache.get_vid(value.value) is None
 
 
@@ -95,13 +97,13 @@ def test_doc_tagging_works():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueNameIdentity("test")
-    value = StoredValue(BoxedValue(5))
+    value = StoredValue(BoxedValue(5), None)
     tag_name = "quack"
 
     online_cache.update(vid, value)
     online_cache.tag(tag_name, vid)
 
-    assert online_cache.get_stored_result(vid) is value
+    assert online_cache.get_stored_value(vid) is value
     assert online_cache.get_vid(value.value) == vid
     assert online_cache.get_tag_stored_value(tag_name) is value
 
@@ -111,7 +113,7 @@ def test_doc_get_vids_works():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueNameIdentity("test")
-    value = StoredValue(BoxedValue(5))
+    value = StoredValue(BoxedValue(5), None)
 
     online_cache.update(vid, value)
 

@@ -43,9 +43,9 @@ class FingerprintFactory:
         self.cache[id(value)] = fingerprint
         return fingerprint
 
-    def fingerprint_function(self, func, get_global_fingerprint=None):
+    def fingerprint_function(self, func):
         # Function fingerprints (when we allow deep fingerprints) cannot be cached
-        return self._get_function_fingerprint(func, allow_deep=True, get_global_fingerprint=get_global_fingerprint)
+        return self._get_function_fingerprint(func, allow_deep=True)
 
     def fingerprint_cell_code(self, cell_code, namespace):
         # Function fingerprints (when we allow deep fingerprints) cannot be cached
@@ -86,38 +86,28 @@ class FingerprintFactory:
             self.code_object_deps[code_object] = code_object_deps
         return code_object_deps
 
-    def _get_deep_fingerprint(self, code_object, namespace, get_global_fingerprint=None):
-        if get_global_fingerprint is None:
-            get_global_fingerprint = self.fingerprint_but_not_deep
-
+    def _get_deep_fingerprint(self, code_object, namespace):
         if code_object in self.deep_fingerprint_stack:
             return FunctionFingerprint(reflection.get_code_object_fingerprint(code_object))
         self.deep_fingerprint_stack.add(code_object)
         try:
             func_deps = self._get_code_object_deps(code_object)
 
-            resolved_globals = reflection.resolve_qualified_names(func_deps.global_loads, namespace)
             resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
 
-            global_vids = {
-                qn: get_global_fingerprint(resolved_global)
-                for qn, resolved_global in resolved_globals.items()
-            }
             global_funcs = {
-                qn: self._get_function_fingerprint(resolved_func, allow_deep=True,
-                                                   get_global_fingerprint=get_global_fingerprint)
+                qn: self._get_function_fingerprint(resolved_func, allow_deep=True)
                 for qn, resolved_func in resolved_funcs.items()
             }
 
             return DeepFunctionFingerprint(
                 reflection.get_code_object_fingerprint(code_object),
-                frozenset(global_vids.items()),
                 frozenset(global_funcs.items()),
             )
         finally:
             self.deep_fingerprint_stack.remove(code_object)
 
-    def _get_function_fingerprint(self, func: FunctionType, allow_deep=True, get_global_fingerprint=None) -> Optional[
+    def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[
         FunctionFingerprint]:
         if func is None:
             func_fingerprint = FunctionFingerprint(None)
@@ -129,7 +119,7 @@ class FingerprintFactory:
                 func = func.dumbo_unwrapped_func
 
             if allow_deep and reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
-                func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__, get_global_fingerprint)
+                func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
             else:
                 func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
 

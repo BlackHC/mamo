@@ -125,7 +125,7 @@ class DumboPersistedCache:
             # TODO: log?
             return None
 
-        return StoredResult(cached_value, stored_result.call_fingerprint)
+        return StoredResult(cached_value, stored_result.fingerprint)
 
     def update(self, vid: ValueCIDIdentity, value: StoredResult):
         with self.transaction_manager:
@@ -165,7 +165,7 @@ class DumboPersistedCache:
         # Load value
         loaded_value = cached_value.value.load()
         wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
-        return StoredResult(wrapped_value, cached_value.call_fingerprint)
+        return StoredResult(wrapped_value, cached_value.fingerprint)
 
     def tag(self, tag_name: str, vid: ValueCIDIdentity):
         if vid is not None and vid not in self.storage.vid_to_cached_value:
