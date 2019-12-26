@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
 from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue
-from dumbo.internal.identities import FingerprintDigest, FingerprintDigestValue
+from dumbo.internal.fingerprints import FingerprintDigest, FingerprintDigestValue
 from dumbo.internal.reflection import get_module_name
 
 

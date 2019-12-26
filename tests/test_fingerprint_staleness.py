@@ -4,6 +4,8 @@ from dumbo.internal import reflection
 from .testing import dumbo_fixture
 
 
+# TODO: this should be a unit test of a pure FingerprintFactory!
+
 global_var = 1
 global_func = None
 
@@ -54,9 +56,9 @@ def test_shallow_function_fingerprint(dumbo_fixture):
     # Disable deep signatures.
     main.dumbo.deep_fingerprint_source_prefix = None
 
-    func_a_fingerprint = main.dumbo._get_function_fingerprint(func_a)
-    func_b_fingerprint = main.dumbo._get_function_fingerprint(func_b)
-    func_c_fingerprint = main.dumbo._get_function_fingerprint(func_c)
+    func_a_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_a)
+    func_b_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_b)
+    func_c_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     assert func_a_fingerprint == func_b_fingerprint
     assert func_b_fingerprint != func_c_fingerprint
@@ -66,9 +68,9 @@ def test_deep_function_fingerprint_simple(dumbo_fixture):
     # Enable deep signatures.
     main.dumbo.deep_fingerprint_source_prefix = ""
 
-    func_a_fingerprint = main.dumbo._get_function_fingerprint(func_a)
-    func_b_fingerprint = main.dumbo._get_function_fingerprint(func_b)
-    func_c_fingerprint = main.dumbo._get_function_fingerprint(func_c)
+    func_a_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_a)
+    func_b_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_b)
+    func_c_fingerprint = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     assert func_a_fingerprint == func_b_fingerprint
     assert func_b_fingerprint != func_c_fingerprint
@@ -81,11 +83,11 @@ def test_deep_function_fingerprint_global_loads(dumbo_fixture):
     global global_var
     global_var = 1
 
-    func_b_fingerprint_1 = main.dumbo._get_function_fingerprint(func_b)
+    func_b_fingerprint_1 = main.dumbo.fingerprint_factory.fingerprint_function(func_b)
 
     global_var = 2
 
-    func_b_fingerprint_2 = main.dumbo._get_function_fingerprint(func_b)
+    func_b_fingerprint_2 = main.dumbo.fingerprint_factory.fingerprint_function(func_b)
 
     assert func_b_fingerprint_1 != func_b_fingerprint_2
 
@@ -97,11 +99,11 @@ def test_deep_function_fingerprint_global_calls(dumbo_fixture):
     global global_func
     global_func = global_func1
 
-    func_c_fingerprint_1 = main.dumbo._get_function_fingerprint(func_c)
+    func_c_fingerprint_1 = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     global_func = global_func2
 
-    func_c_fingerprint_2 = main.dumbo._get_function_fingerprint(func_c)
+    func_c_fingerprint_2 = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     assert func_c_fingerprint_1 != func_c_fingerprint_2
 
@@ -114,11 +116,11 @@ def test_deep_function_fingerprint_global_calls_deep(dumbo_fixture):
     global_func = func_a
     global_var = 1
 
-    func_c_fingerprint_1 = main.dumbo._get_function_fingerprint(func_c)
+    func_c_fingerprint_1 = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     global_var = 2
 
-    func_c_fingerprint_2 = main.dumbo._get_function_fingerprint(func_c)
+    func_c_fingerprint_2 = main.dumbo.fingerprint_factory.fingerprint_function(func_c)
 
     assert func_c_fingerprint_1 != func_c_fingerprint_2
 

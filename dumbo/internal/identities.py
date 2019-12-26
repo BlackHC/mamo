@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Tuple, FrozenSet, Optional, Generic, TypeVar
+from typing import Tuple, FrozenSet, Generic, TypeVar
 
-from dumbo.internal.fingerprints import FingerprintDigest, Fingerprint, CallFingerprint
+from dumbo.internal.fingerprints import Fingerprint, CallFingerprint
 
 T = TypeVar("T")
 
