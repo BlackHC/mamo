@@ -79,7 +79,6 @@ class Dumbo:
             return vid
 
         fingerprint = self.fingerprint_factory.fingerprint_but_not_deep(value)
-
         return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
 
     def get_value_identities(self, persisted=False):
@@ -108,30 +107,24 @@ class Dumbo:
             return True
 
         vid = self._get_vid(value)
+        if vid is None:
+            # TODO: throw?
+            return True
+
         return self.is_stale_vid(vid, depth=depth)
 
-
-    def is_stale_vid(self, vid, *, depth):
+    def is_stale_vid(self, vid: Optional[ValueIdentity], *, depth):
         if vid is None:
-            # TODO: throw instead!
-            return True
+            return False
         if not isinstance(vid, ValueCIDIdentity):
             return False
-
-        # TODO: actually we just want to grab all functions in the call graph and check they are still the same!
-        def vid_to_fingerprint(vid: ValueIdentity):
-            if isinstance(vid, ValueFingerprintIdentity):
-                return vid.fingerprint
-            stored_value = self._get_stored_value(vid)
-            fingerprint = self.fingerprint_factory.fingerprint_but_not_deep(stored_value.value)
-            return fingerprint
 
         def get_call_fingerprint(cid: CallIdentity):
             func = self.fid_to_func[cid.fid]
 
             func_fingerprint = self.fingerprint_factory.fingerprint_function(func)
-            arg_fingerprints = [vid_to_fingerprint(arg_vid) for arg_vid in cid.args_vid]
-            kwarg_fingerprints = [(name, vid_to_fingerprint(arg_vid)) for name, arg_vid in cid.kwargs_vid]
+            arg_fingerprints = [self.online_cache.get_fingerprint(arg_vid) for arg_vid in cid.args_vid]
+            kwarg_fingerprints = [(name, self.online_cache.get_fingerprint(arg_vid)) for name, arg_vid in cid.kwargs_vid]
             return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 
         cid = vid.cid

@@ -36,10 +36,7 @@ class FingerprintFactory:
         if id(value) in self.cache:
             return self.cache[id(value)]
 
-        if isinstance(value, FunctionType):
-            fingerprint = self._get_function_fingerprint(value, allow_deep=False)
-        else:
-            fingerprint = self._fingerprint_value(value)
+        fingerprint = self._fingerprint_value(value)
         self.cache[id(value)] = fingerprint
         return fingerprint
 
@@ -63,6 +60,9 @@ class FingerprintFactory:
         # Move the special casing somewhere else?
         if value is None:
             return FingerprintDigestValue(None, None)
+
+        if isinstance(value, FunctionType):
+            return self._get_function_fingerprint(value, allow_deep=False)
 
         fingerprint = None
         object_saver = MODULE_EXTENSIONS.get_object_saver(value)

@@ -1,5 +1,6 @@
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
+from dumbo.internal.fingerprints import Fingerprint, FingerprintName
+from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult, \
+    ValueFingerprintIdentity, ValueNameIdentity
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
@@ -32,7 +33,11 @@ class DumboOnlineCache:
         return id(value) in self.value_id_to_vid
 
     def get_fingerprint(self, vid) -> Optional[Fingerprint]:
-        if vid in self.vid_to_value:
+        if isinstance(vid, ValueFingerprintIdentity):
+            return vid.fingerprint
+        elif isinstance(vid, ValueNameIdentity):
+            return FingerprintName(vid.unique_name)
+        elif vid in self.vid_to_value:
             stored_value = self.vid_to_value[vid]
         else:
             stored_value = self.persisted_cache.get_cached_value(vid)
