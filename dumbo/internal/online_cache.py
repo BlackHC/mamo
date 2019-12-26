@@ -119,6 +119,7 @@ class DumboOnlineCache:
             raise ValueError(f"{vid} has not been cached!")
 
         self.tag_to_vid.update(tag_name, vid)
+        # TODO: this breaks if vid is not stored in persisted_cache because it is not a value call identity!
         self.persisted_cache.tag(tag_name, vid)
 
     def get_tag_stored_value(self, tag_name: str):

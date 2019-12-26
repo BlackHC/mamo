@@ -44,6 +44,7 @@ class Dumbo:
 
         self.fid_to_func = {}
 
+    # TODO: remove this property again (only used by tests!)
     @property
     def deep_fingerprint_source_prefix(self):
         return self.fingerprint_factory.deep_fingerprint_source_prefix
@@ -105,22 +106,42 @@ class Dumbo:
 
         return call_fingerprint != stored_call_fingerprint
 
-    # TODO: this one is less easy
-    # def is_stale(self, value, *, depth):
-    #     if self.online_cache.is_stale(value):
-    #         return True
-    #
-    #     vid = self._get_vid(value)
-    #     if vid is None:
-    #         # TODO: throw instead!
-    #         return True
-    #     if not isinstance(vid, ValueCIDIdentity):
-    #         return False
-    #
-    #     call_fingerprint = dumbo._get_call_fingerprint(vid, depth=depth)
-    #     stored_call_fingerprint = dumbo.online_cache.get_call_fingerprint(vid)
-    #
-    #     return call_fingerprint != stored_call_fingerprint
+    def is_stale(self, value, *, depth):
+        if self.online_cache.is_stale(value):
+            return True
+
+        vid = self._get_vid(value)
+        if vid is None:
+            # TODO: throw instead!
+            return True
+        if not isinstance(vid, ValueCIDIdentity):
+            return False
+
+        # TODO: actually we just want to grab all functions in the call graph and check they are still the same!
+
+        def vid_to_fingerprint(vid: ValueIdentity, depth: int):
+            stored_result = self._get_stored_value(vid)
+            if not isinstance(vid, ValueCIDIdentity):
+                if isinstance(vid, ValueFingerprintIdentity):
+                    return vid.fingerprint
+                return self.fingerprint_factory.fingerprint_but_not_deep(stored_result.value)
+            if depth == 0:
+                assert isinstance(stored_result, StoredResult)
+                return stored_result.call_fingerprint
+
+            return get_call_fingerprint(vid.cid, depth - 1)
+
+        def get_call_fingerprint(cid: CallIdentity, depth: int):
+            func = self.fid_to_func[cid.fid]
+            func_fingerprint = self.fingerprint_factory.fingerprint_function(func)
+            arg_fingerprints = [vid_to_fingerprint(arg_vid, depth) for arg_vid in cid.args_vid]
+            kwarg_fingerprints = [(name, vid_to_fingerprint(arg_vid, depth)) for name, arg_vid in cid.kwargs_vid]
+            return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
+
+        call_fingerprint = get_call_fingerprint(vid.cid, depth)
+        stored_call_fingerprint = dumbo.online_cache.get_call_fingerprint(vid)
+
+        return call_fingerprint != stored_call_fingerprint
 
     def is_cached(self, func, args, kwargs):
         fid = self._identify_function(func)
@@ -178,6 +199,7 @@ class Dumbo:
 
             result = func(*args, **kwargs)
             wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
+            dumbo.fingerprint_factory.register_fingerprint(wrapped_result, call_fingerprint)
             dumbo.online_cache.update(vid, StoredResult(wrapped_result, call_fingerprint))
 
             return wrapped_result
@@ -239,12 +261,15 @@ class Dumbo:
             # This will take care of each value separately. (At least for wrapping!!)
             wrapped_results = MODULE_EXTENSIONS.wrap_return_value(unzipped_results)
 
+            dumbo.fingerprint_factory.register_fingerprint(wrapped_results, call_fingerprint)
             dumbo.online_cache.update(vid, StoredResult(wrapped_results, call_fingerprint))
             user_ns.update(zip(*wrapped_results))
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.
         self.online_cache.update(ValueNameIdentity(unique_name), StoredValue(value))
+
+        # TODO: register with FingerprintFactory, too, and add a test!
         return value
 
     def tag(self, tag_name, value):
