@@ -21,8 +21,7 @@ from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
 
-from dumbo.internal import default_module_extension\
-
+from dumbo.internal import default_module_extension
 
 # Install the default module extension.
 MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
@@ -101,6 +100,8 @@ class Dumbo:
         cid = self._identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
+        # TODO: this needs to resolve globals differently too!
+        # THIS IS TOTALLY BROKEN! is_stale is the gold_standard!
         call_fingerprint = self.fingerprint_factory.fingerprint_call(func, args, kwargs)
         stored_call_fingerprint = self.online_cache.get_call_fingerprint(vid)
 
@@ -118,7 +119,6 @@ class Dumbo:
             return False
 
         # TODO: actually we just want to grab all functions in the call graph and check they are still the same!
-
         def vid_to_fingerprint(vid: ValueIdentity, depth: int):
             stored_result = self._get_stored_value(vid)
             if not isinstance(vid, ValueCIDIdentity):
@@ -133,7 +133,13 @@ class Dumbo:
 
         def get_call_fingerprint(cid: CallIdentity, depth: int):
             func = self.fid_to_func[cid.fid]
-            func_fingerprint = self.fingerprint_factory.fingerprint_function(func)
+
+            def value_to_fingerprint(value):
+                vid = self._identify_value(value)
+                return vid_to_fingerprint(vid, depth)
+
+            func_fingerprint = self.fingerprint_factory.fingerprint_function(func,
+                                                                             get_global_fingerprint=value_to_fingerprint)
             arg_fingerprints = [vid_to_fingerprint(arg_vid, depth) for arg_vid in cid.args_vid]
             kwarg_fingerprints = [(name, vid_to_fingerprint(arg_vid, depth)) for name, arg_vid in cid.kwargs_vid]
             return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
@@ -217,7 +223,7 @@ class Dumbo:
 
         return wrapped_func
 
-    def run_cell(self,  name: Optional[str], cell: str, user_ns: dict):
+    def run_cell(self, name: Optional[str], cell: str, user_ns: dict):
         # TODO: wrap in a function and execute, so we need explicit globals for stores?
         # TODO: this needs to support space-based indentation!
         function_module = ast.parse("def cell_function():\n  pass")

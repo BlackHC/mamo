@@ -374,3 +374,19 @@ Memoization uses fingerprints. The staleness/the computational graph uses identi
 
 Both hierarchies need to be separate and independent from each other.
 
+Looking at the latest version of the code this is not true still :-/
+
+#### Globals are considered evil
+
+I need to remove globals from fingerprints! They make sense for debugging (to determine why functions are not pure and what the original state was), but not for fingerprinting:
+
+a = f1(); f1 changes global g
+b = f2(a); f2 reads global g
+
+If we cache a and b, b will be considered stale because f1) won't be executed and thus g will not be changed.
+b's fingerprint will expect g to have the changed state though and thus b will be marked stale.
+
+This means my fingerprint semantics was wrong. I must not take globals into account like that.
+I can use global reads to check for purity and/or enforce ignoring specific global reads.
+(Alternatively I could support stochastic functions as alternative to non-pure ones.)
+

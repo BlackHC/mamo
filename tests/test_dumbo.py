@@ -178,12 +178,13 @@ def test_staless_cyclic_global(dumbo_get_global_var_fixture):
     def outer(b):
         return b + global_var
 
-    result = outer(1)
+    @dumbo.dumbo
+    def outer_get(b):
+        return b + get_global_var(1)
 
     # Outer should be considered stale because global_var is stale.
-    # TODO: After rewriting fingerprint handling, this is still an issue because:
-    # fingerprints of globals with call identities use a cache!
-    # assert dumbo.is_stale(result, depth=-1)
+    assert dumbo.is_stale(outer(1), depth=-1)
+    assert dumbo.is_stale(outer_get(1), depth=-1)
 
 
 def test_dumbo_tag(dumbo_fib_fixture):

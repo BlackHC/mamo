@@ -10,7 +10,7 @@ import builtins
 from typing import FrozenSet, Tuple, Optional
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(frozen=True)
 class FunctionDependencies:
     global_loads: FrozenSet[Tuple[str, ...]]
     func_calls: FrozenSet[Tuple[str, ...]]
