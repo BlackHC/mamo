@@ -26,6 +26,10 @@ class IdMapFinalizer(Generic[KT]):
         del self.id_to_finalizer[id_value]
         custom_handler(id_value)
 
+    def lookup_id(self, id_value):
+        return self.id_to_finalizer[id_value].peek()[0]
+
+
     def register(self, value: KT, custom_handler):
         if not supports_weakrefs(value):
             # TODO: log?
@@ -77,4 +81,4 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         return len(self.id_map_to_value)
 
     def __iter__(self) -> Iterator[KT]:
-        return iter(self.id_map_to_value)
+        return map(self.id_map_finalizer.lookup_id, self.id_map_to_value)
