@@ -4,12 +4,16 @@ from typing import MutableMapping
 import objproxies
 
 
-class ObjectProxy(objproxies.ObjectProxy):
-    __slots__ = ('__weakref__',)
-
-
 KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
+
+
+def supports_weakrefs(value):
+    return type(value).__weakrefoffset__ != 0
+
+
+class ObjectProxy(objproxies.ObjectProxy):
+    __slots__ = ('__weakref__',)
 
 
 class IdMapFinalizer(Generic[KT]):
@@ -23,13 +27,12 @@ class IdMapFinalizer(Generic[KT]):
         custom_handler(id_value)
 
     def register(self, value: KT, custom_handler):
-        if type(value).__weakrefoffset__ == 0:
+        if not supports_weakrefs(value):
             # TODO: log?
             return
 
         id_value = id(value)
         if id_value in self.id_to_finalizer:
-            #self.id_to_finalizer[id_value].detach()
             raise ValueError(f"{value} has already been added to the finalizer!")
 
         self.id_to_finalizer[id_value] = weakref.finalize(value, self._finalizer, id_value, custom_handler)
