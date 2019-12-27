@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Tuple, FrozenSet, Generic, TypeVar
+from types import FunctionType
+from typing import Tuple, FrozenSet, Generic, TypeVar, Dict, Optional
 
 from dumbo.internal.fingerprints import Fingerprint, CallFingerprint
 
@@ -37,6 +38,7 @@ class FunctionIdentity:
 @dataclass(frozen=True)
 class CellIdentity(FunctionIdentity):
     """Cells don't have an identity beyond their code."""
+    qualified_name: Optional[str]
     fingerprint: object
 
 
@@ -81,3 +83,12 @@ class StoredValue(Generic[T]):
 @dataclass
 class StoredResult(StoredValue[T]):
     fingerprint: CallFingerprint
+
+
+class IdentityProvider:
+    def identify_value(self, value):
+        raise NotImplementedError()
+
+    def resolve_function(self, fid: FunctionIdentity):
+        raise NotImplementedError()
+

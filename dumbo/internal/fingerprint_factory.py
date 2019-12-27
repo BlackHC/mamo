@@ -3,71 +3,47 @@ from typing import Optional, Set, Dict, List, MutableMapping
 from weakref import WeakKeyDictionary
 
 from dumbo.internal import reflection
-from dumbo.internal.fingerprints import Fingerprint, FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
-    FingerprintDigestValue
+from dumbo.internal.fingerprints import FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
+    FingerprintDigestValue, FingerprintProvider
+from dumbo.internal.identities import CallIdentity, IdentityProvider
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
+from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
 
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
 # We can define a FunctionCall wrapper and pass that through the module system to allow for customization!
-class FingerprintFactory:
-    # TODO: split this into two: a cache for objects and one for literals (or just don't cache literals?)
-    cache: MutableMapping[int, Fingerprint]
+class FingerprintFactory(FingerprintProvider):
+    online_cache: DumboOnlineCache
+    identity_provider: IdentityProvider
     # actually a WeakKeyDictionary!
     code_object_deps: MutableMapping[CodeType, FunctionDependencies]
     # If not None, allows for deep function fingerprinting.
     deep_fingerprint_source_prefix: Optional[str]
     deep_fingerprint_stack: Set[CodeType]
 
-    def __init__(self, deep_fingerprint_source_prefix: Optional[str]):
-        # TODO: self.cache = WeakKeyDictionary()
-        self.cache = {}
+    def __init__(self, deep_fingerprint_source_prefix: Optional[str], online_cache: DumboOnlineCache, identity_provider: IdentityProvider):
+        self.online_cache = online_cache
+        self.identity_provider = identity_provider
+
         self.code_object_deps = WeakKeyDictionary()
 
         self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
         self.deep_fingerprint_stack = set()
 
-    def register_fingerprint(self, value, fingerprint: Fingerprint):
-        self.cache[id(value)] = fingerprint
-
-    def fingerprint_but_not_deep(self, value):
-        # TODO: I think I need to implement a custom weakref dictionary
-        if id(value) in self.cache:
-            return self.cache[id(value)]
-
-        fingerprint = self._fingerprint_value(value)
-        self.cache[id(value)] = fingerprint
-        return fingerprint
-
-    def fingerprint_function(self, func):
-        # Function fingerprints (when we allow deep fingerprints) cannot be cached
-        return self._get_function_fingerprint(func, allow_deep=True)
-
-    def fingerprint_cell_code(self, cell_code, namespace):
-        # Function fingerprints (when we allow deep fingerprints) cannot be cached
-        return self._get_deep_fingerprint(cell_code, namespace)
-
-    def fingerprint_call(self, func: FunctionType, args: List, kwargs: Dict):
-        # Call fingerprints (when we allow deep fingerprints) cannot be cached
-        func_fingerprint = self._get_function_fingerprint(func)
-        args_fingerprints = tuple(self.fingerprint_but_not_deep(arg) for arg in args)
-        kwargs_fingerprints = frozenset((name, self.fingerprint_but_not_deep(arg)) for name, arg in kwargs.items())
-
-        return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
-
-    def _fingerprint_value(self, value):
+    def fingerprint_value(self, value):
         # Move the special casing somewhere else?
         if value is None:
-            return FingerprintDigestValue(None, None)
+            fingerprint = FingerprintDigestValue(None, None)
+        elif isinstance(value, FunctionType):
+            fingerprint = self._get_function_fingerprint(value, allow_deep=False)
+        else:
+            fingerprint = self.online_cache.get_fingerprint_from_vid(self.online_cache.get_vid(value))
 
-        if isinstance(value, FunctionType):
-            return self._get_function_fingerprint(value, allow_deep=False)
-
-        fingerprint = None
-        object_saver = MODULE_EXTENSIONS.get_object_saver(value)
-        if object_saver is not None:
-            fingerprint = object_saver.compute_fingerprint()
+        if fingerprint is None:
+            object_saver = MODULE_EXTENSIONS.get_object_saver(value)
+            if object_saver is not None:
+                fingerprint = object_saver.compute_fingerprint()
 
         if fingerprint is None:
             # TODO: log?
@@ -78,6 +54,29 @@ class FingerprintFactory:
             )
 
         return fingerprint
+
+    def fingerprint_function(self, func):
+        # Function fingerprints (when we allow deep fingerprints) cannot be cached
+        return self._get_function_fingerprint(func, allow_deep=True)
+
+    def fingerprint_cell_code(self, cell_code, namespace):
+        # Function fingerprints (when we allow deep fingerprints) cannot be cached
+        return self._get_deep_fingerprint(cell_code, namespace)
+
+    def fingerprint_call(self, func: FunctionType, args, kwargs: Dict):
+        # Call fingerprints (when we allow deep fingerprints) cannot be cached
+        func_fingerprint = self._get_function_fingerprint(func)
+        args_fingerprints = tuple(self.fingerprint_value(arg) for arg in args)
+        kwargs_fingerprints = frozenset((name, self.fingerprint_value(arg)) for name, arg in kwargs.items())
+
+        return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
+
+    def fingerprint_call_cid(self, cid: CallIdentity):
+        func_fingerprint = self.identity_provider.resolve_function(cid.fid)
+        arg_fingerprints = [self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in cid.args_vid]
+        kwarg_fingerprints = [(name, self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in
+                              cid.kwargs_vid]
+        return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 
     def _get_code_object_deps(self, code_object) -> FunctionDependencies:
         code_object_deps = self.code_object_deps.get(code_object)

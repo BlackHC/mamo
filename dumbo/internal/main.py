@@ -1,23 +1,20 @@
 import ast
-from types import FunctionType, CodeType
-from typing import Optional, Dict, Set
+from typing import Optional
 
 from dumbo.internal import reflection
 from functools import wraps
 
 from dumbo.internal.fingerprint_factory import FingerprintFactory
-from dumbo.internal.fingerprints import FingerprintName
+from dumbo.internal.fingerprints import FingerprintName, FingerprintProvider
 from dumbo.internal.identities import (
     ValueNameIdentity,
-    ValueFingerprintIdentity,
     ValueCIDIdentity,
     FunctionIdentity,
-    CallIdentity,
     ValueIdentity,
     StoredResult,
     StoredValue,
-    CellIdentity,
-    CallFingerprint)
+    CallFingerprint, IdentityProvider)
+from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.persisted_cache import DumboPersistedCache
@@ -28,26 +25,34 @@ from dumbo.internal import default_module_extension
 MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
 
 
-class Dumbo:
-    # TODO: use weak dicts!
+class Dumbo(IdentityProvider, FingerprintProvider):
     fingerprint_factory: FingerprintFactory
-    fid_to_func: Dict[FunctionIdentity, FunctionType]
 
+    identity_registry: IdentityRegistry
     online_cache: DumboOnlineCache
+
     persisted_cache: DumboPersistedCache
 
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str]):
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
 
-        self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix)
+        self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix, self.online_cache, self)
+        self.identity_registry = IdentityRegistry(self.online_cache, self)
 
-        self.fid_to_func = {}
+    def identify_value(self, value):
+        return self.identity_registry.identify_value(value)
 
-    # TODO: remove this property again (only used by tests!)
+    def fingerprint_value(self, value):
+        return self.fingerprint_factory.fingerprint_value(value)
+
+    def resolve_function(self, fid: FunctionIdentity):
+        return self.identity_registry.resolve_function(fid)
+
     @property
     def deep_fingerprint_source_prefix(self):
         return self.fingerprint_factory.deep_fingerprint_source_prefix
+    # TODO: remove this property again (only used by tests!)
 
     @deep_fingerprint_source_prefix.setter
     def deep_fingerprint_source_prefix(self, value):
@@ -58,28 +63,6 @@ class Dumbo:
 
     def _get_vid(self, value):
         return self.online_cache.get_vid(value)
-
-    def _identify_function(self, func) -> FunctionIdentity:
-        return FunctionIdentity(reflection.get_func_qualified_name(func))
-
-    def _identify_cell(self, name: str, code_object: CodeType) -> FunctionIdentity:
-        if name is not None:
-            return CellIdentity(name, None)
-        return CellIdentity(name, reflection.get_code_object_fingerprint(code_object))
-
-    def _identify_call(self, fid, args, kwargs) -> CallIdentity:
-        args_vid = tuple(self._identify_value(arg) for arg in args)
-        kwargs_vid = frozenset((name, self._identify_value(value)) for name, value in kwargs.items())
-
-        return CallIdentity(fid, args_vid, kwargs_vid)
-
-    def _identify_value(self, value) -> ValueIdentity:
-        vid = self._get_vid(value)
-        if vid is not None:
-            return vid
-
-        fingerprint = self.fingerprint_factory.fingerprint_but_not_deep(value)
-        return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
 
     def get_value_identities(self, persisted=False):
         # TODO: add tests
@@ -96,8 +79,8 @@ class Dumbo:
         self.online_cache.flush()
 
     def is_stale_call(self, func, args, kwargs, *, depth=-1):
-        fid = self._identify_function(func)
-        cid = self._identify_call(fid, args, kwargs)
+        fid = self.identity_registry.identify_function(func)
+        cid = self.identity_registry.identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
         return self.is_stale_vid(vid, depth=depth)
@@ -119,17 +102,9 @@ class Dumbo:
         if not isinstance(vid, ValueCIDIdentity):
             return False
 
-        def get_call_fingerprint(cid: CallIdentity):
-            func = self.fid_to_func[cid.fid]
-
-            func_fingerprint = self.fingerprint_factory.fingerprint_function(func)
-            arg_fingerprints = [self.online_cache.get_fingerprint(arg_vid) for arg_vid in cid.args_vid]
-            kwarg_fingerprints = [(name, self.online_cache.get_fingerprint(arg_vid)) for name, arg_vid in cid.kwargs_vid]
-            return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
-
         cid = vid.cid
-        call_fingerprint = get_call_fingerprint(cid)
-        stored_call_fingerprint = dumbo.online_cache.get_fingerprint(vid)
+        call_fingerprint = self.fingerprint_factory.fingerprint_call_cid(cid)
+        stored_call_fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
 
         if call_fingerprint != stored_call_fingerprint:
             return True
@@ -141,15 +116,15 @@ class Dumbo:
                 any(self.is_stale_vid(arg_vid, depth=depth - 1) for name, arg_vid in cid.kwargs_vid))
 
     def is_cached(self, func, args, kwargs):
-        fid = self._identify_function(func)
-        cid = self._identify_call(fid, args, kwargs)
+        fid = self.identity_registry.identify_function(func)
+        cid = self.identity_registry.identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
         return self.online_cache.has_vid(vid)
 
     def forget_call(self, func, args, kwargs):
-        fid = dumbo._identify_function(func)
-        cid = dumbo._identify_call(fid, args, kwargs)
+        fid = self.identity_registry.identify_function(func)
+        cid = self.identity_registry.identify_call(fid, args, kwargs)
         vid = ValueCIDIdentity(cid)
 
         self.online_cache.update(vid, None)
@@ -174,10 +149,9 @@ class Dumbo:
                     # TODO: maybe log?
                     init_dumbo()
 
-                fid = dumbo._identify_function(func)
-                dumbo.fid_to_func[fid] = wrapped_func
+                fid = dumbo.identity_registry.identify_function(func)
 
-            cid = dumbo._identify_call(fid, args, kwargs)
+            cid = dumbo.identity_registry.identify_call(fid, args, kwargs)
             vid = ValueCIDIdentity(cid)
 
             call_fingerprint = dumbo.fingerprint_factory.fingerprint_call(func, args, kwargs)
@@ -196,7 +170,6 @@ class Dumbo:
 
             result = func(*args, **kwargs)
             wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-            dumbo.fingerprint_factory.register_fingerprint(wrapped_result, call_fingerprint)
             dumbo.online_cache.update(vid, StoredResult(wrapped_result, call_fingerprint))
 
             return wrapped_result
@@ -209,8 +182,7 @@ class Dumbo:
         # This method is a static method, so that dumbo does not need to be initialized.
         fid = None
         if dumbo is not None:
-            fid = dumbo._identify_function(func)
-            dumbo.fid_to_func[fid] = wrapped_func
+            fid = dumbo.identity_registry.identify_function(func)
 
         return wrapped_func
 
@@ -227,11 +199,11 @@ class Dumbo:
         cell_function = local_ns["cell_function"]
         code_object = cell_function.__code__
 
-        cell_id = self._identify_cell(name, code_object)
+        cell_id = self.identity_registry.identify_cell(name, cell_function)
 
         loads, global_stores = reflection.get_global_loads_stores(code_object)
 
-        cid = self._identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
+        cid = self.identity_registry.identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
         vid = ValueCIDIdentity(cid)
 
         # TODO: there is a lot of code shared between wrapped_func and run_cell!
@@ -260,7 +232,7 @@ class Dumbo:
             # This will take care of each value separately. (At least for wrapping!!)
             wrapped_results = MODULE_EXTENSIONS.wrap_return_value(unzipped_results)
 
-            dumbo.fingerprint_factory.register_fingerprint(wrapped_results, call_fingerprint)
+            # TODO: add a tuple accessor or something similar here, so we can actually check for staleness!
             dumbo.online_cache.update(vid, StoredResult(wrapped_results, call_fingerprint))
             user_ns.update(zip(*wrapped_results))
 
@@ -271,7 +243,6 @@ class Dumbo:
         self.online_cache.update(vid, StoredValue(value, fingerprint))
 
         # TODO: add a test!
-        self.fingerprint_factory.register_fingerprint(value, fingerprint)
 
         return value
 
@@ -299,6 +270,8 @@ class Dumbo:
 
     def testing_close(self):
         self.persisted_cache.testing_close()
+        self.identity_registry = None
+        self.fingerprint_factory = None
 
 
 dumbo: Optional[Dumbo] = None

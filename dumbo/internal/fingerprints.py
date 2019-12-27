@@ -50,3 +50,8 @@ class CallFingerprint(Fingerprint):
     # Need fingerprints everywhere! This needs to be a separate hierarchy!
     args: Tuple[Optional[Fingerprint], ...]
     kwargs: FrozenSet[Tuple[str, Optional[Fingerprint]]]
+
+
+class FingerprintProvider:
+    def fingerprint_value(self, value):
+        raise NotImplementedError()
