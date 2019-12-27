@@ -4,7 +4,7 @@ import dumbo
 from dumbo.internal import main
 
 # Here, we just assume dumbo as general memoization library.
-from dumbo.internal.identities import ValueNameIdentity
+from dumbo.internal.identities import value_name_identity
 
 from tests.testing import BoxedValue
 # noinspection PyUnresolvedReferences
@@ -84,7 +84,7 @@ def test_dumbo_register_external_value(dumbo_fib_fixture):
 
     result = dumbo_fib_fixture(magic_number)
 
-    assert main.dumbo.online_cache.value_id_to_vid[id(result)].cid.args_vid[0] == ValueNameIdentity(unique_name)
+    assert main.dumbo.online_cache.value_id_to_vid[id(result)].cid.args_vid[0] == value_name_identity(unique_name)
 
     dumbo.register_external_value(unique_name, None)
 

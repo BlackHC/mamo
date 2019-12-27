@@ -1,8 +1,7 @@
 from abc import abstractmethod, ABC
 
-from dumbo.internal.fingerprints import Fingerprint, FingerprintName
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult, \
-    ValueFingerprintIdentity, ValueNameIdentity
+from dumbo.internal.fingerprints import Fingerprint
+from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap

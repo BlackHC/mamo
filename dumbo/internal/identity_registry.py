@@ -3,7 +3,7 @@ from typing import Dict
 
 from dumbo.internal import reflection
 
-from dumbo.internal.fingerprints import FingerprintProvider
+from dumbo.internal.fingerprints import FingerprintProvider, FingerprintName
 from dumbo.internal.identities import (
     ValueFingerprintIdentity,
     FunctionIdentity,

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from types import FunctionType
 from typing import Tuple, FrozenSet, Generic, TypeVar, Dict, Optional
 
-from dumbo.internal.fingerprints import Fingerprint, CallFingerprint
+from dumbo.internal.fingerprints import Fingerprint, CallFingerprint, FingerprintName
 
 T = TypeVar("T")
 
@@ -12,22 +12,19 @@ class ValueIdentity:
         raise NotImplementedError()
 
 
-# TODO: replace ValueNameIdentity with ValueFingerprintIdentity(FingerprintName)!
-@dataclass(frozen=True)
-class ValueNameIdentity(ValueIdentity):
-    unique_name: str
-
-    def get_external_info(self):
-        return self.unique_name
-
-
 @dataclass(frozen=True)
 class ValueFingerprintIdentity(ValueIdentity):
     qualified_type_name: str
     fingerprint: Fingerprint
 
     def get_external_info(self):
-        return f"{self.qualified_type_name}_{self.fingerprint}"
+        if isinstance(self.fingerprint, FingerprintName):
+            return f"{self.fingerprint.name}"
+        return f"{self.qualified_type_name}"
+
+
+def value_name_identity(unique_name: str):
+    return ValueFingerprintIdentity("{value}", FingerprintName(unique_name))
 
 
 @dataclass(frozen=True)
@@ -56,21 +53,20 @@ class ValueCIDIdentity(ValueIdentity):
 
     def get_external_info(self):
         # TODO: maybe convert get_external_info into a visitor pattern?
+        # TODO: add tests that test all of this?
 
         # Look at arguments.
         # Do we have any named ones?
         args = []
         for arg in self.cid.args_vid:
-            if isinstance(arg, ValueNameIdentity):
-                args.append(arg.get_external_info())
+            args.append(arg.get_external_info())
         for name, value in self.cid.kwargs_vid:
-            if isinstance(value, ValueNameIdentity):
-                args.append(f"{name}_{value.get_external_info()}")
+            args.append(f"{name}={value.get_external_info()}")
         if args:
             args = "_" + "_".join(args)
         else:
             args = ""
-        return f"{self.cid.fid.qualified_name}{args}"
+        return f"{self.cid.fid.qualified_name}({args})"
 
 
 @dataclass

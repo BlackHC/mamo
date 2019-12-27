@@ -5,7 +5,7 @@ from weakref import WeakKeyDictionary
 from dumbo.internal import reflection
 from dumbo.internal.fingerprints import FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
     FingerprintDigestValue, FingerprintProvider, FingerprintName
-from dumbo.internal.identities import CallIdentity, IdentityProvider, ValueFingerprintIdentity, ValueNameIdentity
+from dumbo.internal.identities import CallIdentity, IdentityProvider, ValueFingerprintIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
@@ -43,8 +43,6 @@ class FingerprintFactory(FingerprintProvider):
             if vid is not None:
                 if isinstance(vid, ValueFingerprintIdentity):
                     fingerprint = vid.fingerprint
-                elif isinstance(vid, ValueNameIdentity):
-                    fingerprint = FingerprintName(vid.unique_name)
                 else:
                     fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
 

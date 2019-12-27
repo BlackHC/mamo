@@ -5,15 +5,14 @@ from dumbo.internal import reflection
 from functools import wraps
 
 from dumbo.internal.fingerprint_factory import FingerprintFactory
-from dumbo.internal.fingerprints import FingerprintName, FingerprintProvider
+from dumbo.internal.fingerprints import FingerprintProvider
 from dumbo.internal.identities import (
-    ValueNameIdentity,
     ValueCIDIdentity,
     FunctionIdentity,
     ValueIdentity,
     StoredResult,
     StoredValue,
-    CallFingerprint, IdentityProvider)
+    CallFingerprint, IdentityProvider, value_name_identity)
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -238,9 +237,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.
-        vid = ValueNameIdentity(unique_name)
-        fingerprint = FingerprintName(unique_name)
-        self.online_cache.update(vid, StoredValue(value, fingerprint))
+        vid = value_name_identity(unique_name)
+        self.online_cache.update(vid, StoredValue(value, vid.fingerprint))
 
         # TODO: add a test!
 
@@ -263,7 +261,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         return stored_value.value
 
     def get_external_value(self, unique_name):
-        stored_value = self._get_stored_value(ValueNameIdentity(unique_name))
+        stored_value = self._get_stored_value(value_name_identity(unique_name))
         if stored_value is None:
             return None
         return stored_value.value
