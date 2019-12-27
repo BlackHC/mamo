@@ -12,7 +12,10 @@ from dumbo.internal.identities import (
     ValueIdentity,
     StoredResult,
     StoredValue,
-    CallFingerprint, IdentityProvider, value_name_identity)
+    CallFingerprint,
+    IdentityProvider,
+    value_name_identity,
+)
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -51,6 +54,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     @property
     def deep_fingerprint_source_prefix(self):
         return self.fingerprint_factory.deep_fingerprint_source_prefix
+
     # TODO: remove this property again (only used by tests!)
 
     @deep_fingerprint_source_prefix.setter
@@ -109,8 +113,9 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         if depth == 0:
             return False
 
-        return (any(self.is_stale_vid(arg_vid, depth=depth - 1) for arg_vid in vid.args_vid) or
-                any(self.is_stale_vid(arg_vid, depth=depth - 1) for name, arg_vid in vid.kwargs_vid))
+        return any(self.is_stale_vid(arg_vid, depth=depth - 1) for arg_vid in vid.args_vid) or any(
+            self.is_stale_vid(arg_vid, depth=depth - 1) for name, arg_vid in vid.kwargs_vid
+        )
 
     def is_cached(self, func, args, kwargs):
         fid = self.identity_registry.identify_function(func)
@@ -158,8 +163,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
                 assert isinstance(memoized_result, StoredResult)
                 if call_fingerprint != memoized_result.fingerprint:
                     # TODO: log
-                    print(f"{vid} is stale!"
-                          f"\t{call_fingerprint}\nvs\n\t{memoized_result.fingerprint}")
+                    print(f"{vid} is stale!" f"\t{call_fingerprint}\nvs\n\t{memoized_result.fingerprint}")
                 return memoized_result.value
 
             result = func(*args, **kwargs)
@@ -186,7 +190,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         function_module = ast.parse("def cell_function():\n  pass")
         cell_module = ast.parse(cell)
         function_module.body[0].body = cell_module.body
-        compiled_function = compile(function_module, 'cell', 'exec')
+        compiled_function = compile(function_module, "cell", "exec")
 
         local_ns = {}
         exec(compiled_function, user_ns, local_ns)
@@ -269,11 +273,13 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 dumbo: Optional[Dumbo] = None
 
 
-def init_dumbo(memory_only=True,
-               path: Optional[str] = None,
-               externally_cached_path: Optional[str] = None,
-               # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
-               deep_fingerprint_source_prefix: Optional[str] = None):
+def init_dumbo(
+    memory_only=True,
+    path: Optional[str] = None,
+    externally_cached_path: Optional[str] = None,
+    # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
+    deep_fingerprint_source_prefix: Optional[str] = None,
+):
     global dumbo
     assert dumbo is None
 

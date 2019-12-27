@@ -13,7 +13,7 @@ def supports_weakrefs(value):
 
 
 class ObjectProxy(objproxies.ObjectProxy):
-    __slots__ = ('__weakref__',)
+    __slots__ = ("__weakref__",)
 
 
 class IdMapFinalizer(Generic[KT]):
@@ -28,7 +28,6 @@ class IdMapFinalizer(Generic[KT]):
 
     def lookup_id(self, id_value):
         return self.id_to_finalizer[id_value].peek()[0]
-
 
     def register(self, value: KT, custom_handler):
         if not supports_weakrefs(value):

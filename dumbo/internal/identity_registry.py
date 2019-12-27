@@ -9,7 +9,9 @@ from dumbo.internal.identities import (
     FunctionIdentity,
     ValueIdentity,
     CellIdentity,
-    IdentityProvider, ValueCallIdentity)
+    IdentityProvider,
+    ValueCallIdentity,
+)
 from dumbo.internal.online_cache import DumboOnlineCache
 
 

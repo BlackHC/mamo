@@ -21,6 +21,7 @@ class FingerprintDigestValue(FingerprintDigest):
     """`FingerprintDigest` that carries its original value to be more informative.
 
     For all purposes, we ignore the actual value for hashing and use the provided digest."""
+
     value: object
 
     def __eq__(self, other):

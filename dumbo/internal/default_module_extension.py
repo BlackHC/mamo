@@ -67,9 +67,7 @@ class DefaultTupleObjectSaver(ObjectSaver):
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         return CachedTuple(
             tuple(
-                object_saver.cache_value(
-                    ExternallyCachedFilePath.for_tuple_item(external_path_builder, i)
-                )
+                object_saver.cache_value(ExternallyCachedFilePath.for_tuple_item(external_path_builder, i))
                 for i, object_saver in enumerate(self.object_savers)
             )
         )
@@ -89,13 +87,7 @@ class DefaultModuleExtension(ModuleExtension):
 
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         if isinstance(value, tuple):
-            return DefaultTupleObjectSaver(
-                value,
-                tuple(
-                    self.module_registry.get_object_saver(item)
-                    for item in value
-                )
-            )
+            return DefaultTupleObjectSaver(value, tuple(self.module_registry.get_object_saver(item) for item in value))
 
         try:
             pickled_bytes = pickle.dumps(value)

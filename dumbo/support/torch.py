@@ -16,6 +16,7 @@ from dumbo.api_support import (
 
 # TODO: does this all work for cuda tensors????
 
+
 class TorchExternallyCachedValue(ExternallyCachedValue):
     def load(self):
         return th.load(self.path)

@@ -34,6 +34,7 @@ class FunctionIdentity:
 @dataclass(frozen=True)
 class CellIdentity(FunctionIdentity):
     """Cells don't have an identity beyond their code."""
+
     qualified_name: Optional[str]
     fingerprint: object
 
@@ -81,4 +82,3 @@ class IdentityProvider:
 
     def resolve_function(self, fid: FunctionIdentity):
         raise NotImplementedError()
-

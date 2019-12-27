@@ -1,5 +1,6 @@
 from dumbo.internal import main
 from dumbo.internal import reflection
+
 # noinspection PyUnresolvedReferences
 from .testing import dumbo_fixture
 
@@ -34,7 +35,7 @@ def global_func2():
 
 
 # Let's make func_a/b/c all the same by name.
-func_a.__qualname__ = func_b.__qualname__ = func_c.__qualname__ = 'func'
+func_a.__qualname__ = func_b.__qualname__ = func_c.__qualname__ = "func"
 
 
 def test_func_a_b_c_same():

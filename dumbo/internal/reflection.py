@@ -163,7 +163,7 @@ def is_func_local(func, local_prefix: Optional[str]):
     module = inspect.getmodule(func)
 
     # Functions in the main module are local by nature (so we don't need a local_prefix to establish that).
-    if module.__name__ == '__main__':
+    if module.__name__ == "__main__":
         return True
 
     if local_prefix is None:

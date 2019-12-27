@@ -7,6 +7,7 @@ from dumbo.internal import main
 from dumbo.internal.identities import value_name_identity
 
 from tests.testing import BoxedValue
+
 # noinspection PyUnresolvedReferences
 from tests.testing import dumbo_fixture
 from _pytest.fixtures import fixture
@@ -150,7 +151,6 @@ def test_run_named_cell(dumbo_fixture):
     main.dumbo.run_cell("named_cell", "pass", user_ns)
 
     assert user_ns_obj.var is var_old
-
 
 
 # @dumbo.dumbo()

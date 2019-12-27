@@ -8,7 +8,7 @@ from dumbo.internal import main
 class DumboMagics(Magics):
     @cell_magic
     @magic_arguments()
-    @argument('name', type=str, nargs="?", default=None, help='Optional name of the cell.')
+    @argument("name", type=str, nargs="?", default=None, help="Optional name of the cell.")
     def dumbo(self, line, cell):
         "dumbo cell wrapper, only tracks global stores!"
         assert isinstance(line, str)

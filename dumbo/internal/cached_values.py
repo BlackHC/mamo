@@ -6,6 +6,7 @@ from typing import Optional
 
 class CachedValue:
     """Wraps a value that is being cached offline."""
+
     def unlink(self):
         # This value is about to not be part of the cache anymore.
         # Deal with it (by removing auxiliary files etc).
@@ -18,6 +19,7 @@ class CachedValue:
 @dataclass
 class ExternallyCachedFilePath:
     """Builder for file paths for externally cached values."""
+
     path: str
     external_id: str
     vid_info: str
@@ -36,6 +38,7 @@ class ExternallyCachedFilePath:
 @dataclass(unsafe_hash=True)
 class ExternallyCachedValue(CachedValue, ABC):
     """A value that is cached with external resources."""
+
     path: str
 
     def unlink(self):
@@ -48,6 +51,7 @@ class ExternallyCachedValue(CachedValue, ABC):
 @dataclass(unsafe_hash=True)
 class DBCachedValue(CachedValue, ABC):
     """A value that is cached in the database."""
+
     cached_value: object
 
     def load(self):

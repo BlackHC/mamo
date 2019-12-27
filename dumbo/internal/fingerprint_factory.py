@@ -3,8 +3,13 @@ from typing import Optional, Set, Dict, MutableMapping, Any
 from weakref import WeakKeyDictionary
 
 from dumbo.internal import reflection
-from dumbo.internal.fingerprints import FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
-    FingerprintDigestValue, FingerprintProvider
+from dumbo.internal.fingerprints import (
+    FunctionFingerprint,
+    DeepFunctionFingerprint,
+    CallFingerprint,
+    FingerprintDigestValue,
+    FingerprintProvider,
+)
 from dumbo.internal.identities import IdentityProvider, ValueFingerprintIdentity, ValueCallIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -28,8 +33,12 @@ class FingerprintFactory(FingerprintProvider):
     deep_fingerprint_source_prefix: Optional[str]
     deep_fingerprint_stack: Set[CodeType]
 
-    def __init__(self, deep_fingerprint_source_prefix: Optional[str], online_cache: DumboOnlineCache,
-                 identity_provider: IdentityProvider):
+    def __init__(
+        self,
+        deep_fingerprint_source_prefix: Optional[str],
+        online_cache: DumboOnlineCache,
+        identity_provider: IdentityProvider,
+    ):
         self.online_cache = online_cache
         self.identity_provider = identity_provider
 
@@ -100,8 +109,9 @@ class FingerprintFactory(FingerprintProvider):
     def fingerprint_call_vid(self, vid: ValueCallIdentity):
         func_fingerprint = self.identity_provider.resolve_function(vid.fid)
         arg_fingerprints = [self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid]
-        kwarg_fingerprints = [(name, self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in
-                              vid.kwargs_vid]
+        kwarg_fingerprints = [
+            (name, self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in vid.kwargs_vid
+        ]
         return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 
     def _get_code_object_deps(self, code_object) -> FunctionDependencies:
@@ -126,14 +136,12 @@ class FingerprintFactory(FingerprintProvider):
             }
 
             return DeepFunctionFingerprint(
-                reflection.get_code_object_fingerprint(code_object),
-                frozenset(global_funcs.items()),
+                reflection.get_code_object_fingerprint(code_object), frozenset(global_funcs.items())
             )
         finally:
             self.deep_fingerprint_stack.remove(code_object)
 
-    def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[
-        FunctionFingerprint]:
+    def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[FunctionFingerprint]:
         if func is None:
             func_fingerprint = FunctionFingerprint(None)
         elif reflection.is_func_builtin(func):
