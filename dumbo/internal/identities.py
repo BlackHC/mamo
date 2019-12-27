@@ -38,17 +38,12 @@ class CellIdentity(FunctionIdentity):
     fingerprint: object
 
 
+# TODO: merge this into CallIdentity?
 @dataclass(frozen=True)
-class CallIdentity:
+class ValueCallIdentity(ValueIdentity):
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
     kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
-
-
-# TODO: merge this into CallIdentity?
-@dataclass(frozen=True)
-class ValueCIDIdentity(ValueIdentity):
-    cid: CallIdentity
 
     def get_external_info(self):
         # TODO: maybe convert get_external_info into a visitor pattern?
@@ -57,15 +52,15 @@ class ValueCIDIdentity(ValueIdentity):
         # Look at arguments.
         # Do we have any named ones?
         args = []
-        for arg in self.cid.args_vid:
+        for arg in self.args_vid:
             args.append(arg.get_external_info())
-        for name, value in self.cid.kwargs_vid:
+        for name, value in self.kwargs_vid:
             args.append(f"{name}={value.get_external_info()}")
         if args:
             args = "_" + "_".join(args)
         else:
             args = ""
-        return f"{self.cid.fid.qualified_name}({args})"
+        return f"{self.fid.qualified_name}({args})"
 
 
 @dataclass

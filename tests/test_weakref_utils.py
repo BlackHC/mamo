@@ -49,6 +49,8 @@ def test_id_map_finalizer():
     id_map_finalizer.register(a, custom_handler)
     gc.collect()
 
+    assert id_map_finalizer.lookup_id(id(a)) == a
+
     assert a_has_been_finalized_counter == 0
 
     a = None

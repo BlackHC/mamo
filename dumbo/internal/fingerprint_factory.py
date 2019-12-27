@@ -5,7 +5,7 @@ from weakref import WeakKeyDictionary
 from dumbo.internal import reflection
 from dumbo.internal.fingerprints import FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
     FingerprintDigestValue, FingerprintProvider
-from dumbo.internal.identities import CallIdentity, IdentityProvider, ValueFingerprintIdentity
+from dumbo.internal.identities import IdentityProvider, ValueFingerprintIdentity, ValueCallIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
@@ -97,11 +97,11 @@ class FingerprintFactory(FingerprintProvider):
 
         return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
 
-    def fingerprint_call_cid(self, cid: CallIdentity):
-        func_fingerprint = self.identity_provider.resolve_function(cid.fid)
-        arg_fingerprints = [self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in cid.args_vid]
+    def fingerprint_call_vid(self, vid: ValueCallIdentity):
+        func_fingerprint = self.identity_provider.resolve_function(vid.fid)
+        arg_fingerprints = [self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid]
         kwarg_fingerprints = [(name, self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in
-                              cid.kwargs_vid]
+                              vid.kwargs_vid]
         return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 
     def _get_code_object_deps(self, code_object) -> FunctionDependencies:

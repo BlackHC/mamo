@@ -7,7 +7,7 @@ from functools import wraps
 from dumbo.internal.fingerprint_factory import FingerprintFactory
 from dumbo.internal.fingerprints import FingerprintProvider
 from dumbo.internal.identities import (
-    ValueCIDIdentity,
+    ValueCallIdentity,
     FunctionIdentity,
     ValueIdentity,
     StoredResult,
@@ -79,8 +79,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     def is_stale_call(self, func, args, kwargs, *, depth=-1):
         fid = self.identity_registry.identify_function(func)
-        cid = self.identity_registry.identify_call(fid, args, kwargs)
-        vid = ValueCIDIdentity(cid)
+        vid = self.identity_registry.identify_call(fid, args, kwargs)
 
         return self.is_stale_vid(vid, depth=depth)
 
@@ -98,11 +97,10 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def is_stale_vid(self, vid: Optional[ValueIdentity], *, depth):
         if vid is None:
             return False
-        if not isinstance(vid, ValueCIDIdentity):
+        if not isinstance(vid, ValueCallIdentity):
             return False
 
-        cid = vid.cid
-        call_fingerprint = self.fingerprint_factory.fingerprint_call_cid(cid)
+        call_fingerprint = self.fingerprint_factory.fingerprint_call_vid(vid)
         stored_call_fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
 
         if call_fingerprint != stored_call_fingerprint:
@@ -111,20 +109,18 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         if depth == 0:
             return False
 
-        return (any(self.is_stale_vid(arg_vid, depth=depth - 1) for arg_vid in cid.args_vid) or
-                any(self.is_stale_vid(arg_vid, depth=depth - 1) for name, arg_vid in cid.kwargs_vid))
+        return (any(self.is_stale_vid(arg_vid, depth=depth - 1) for arg_vid in vid.args_vid) or
+                any(self.is_stale_vid(arg_vid, depth=depth - 1) for name, arg_vid in vid.kwargs_vid))
 
     def is_cached(self, func, args, kwargs):
         fid = self.identity_registry.identify_function(func)
-        cid = self.identity_registry.identify_call(fid, args, kwargs)
-        vid = ValueCIDIdentity(cid)
+        vid = self.identity_registry.identify_call(fid, args, kwargs)
 
         return self.online_cache.has_vid(vid)
 
     def forget_call(self, func, args, kwargs):
         fid = self.identity_registry.identify_function(func)
-        cid = self.identity_registry.identify_call(fid, args, kwargs)
-        vid = ValueCIDIdentity(cid)
+        vid = self.identity_registry.identify_call(fid, args, kwargs)
 
         self.online_cache.update(vid, None)
 
@@ -150,8 +146,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
                 fid = dumbo.identity_registry.identify_function(func)
 
-            cid = dumbo.identity_registry.identify_call(fid, args, kwargs)
-            vid = ValueCIDIdentity(cid)
+            vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
 
             call_fingerprint = dumbo.fingerprint_factory.fingerprint_call(func, args, kwargs)
 
@@ -163,7 +158,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
                 assert isinstance(memoized_result, StoredResult)
                 if call_fingerprint != memoized_result.fingerprint:
                     # TODO: log
-                    print(f"{vid.cid} is stale!"
+                    print(f"{vid} is stale!"
                           f"\t{call_fingerprint}\nvs\n\t{memoized_result.fingerprint}")
                 return memoized_result.value
 
@@ -202,8 +197,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
         loads, global_stores = reflection.get_global_loads_stores(code_object)
 
-        cid = self.identity_registry.identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
-        vid = ValueCIDIdentity(cid)
+        vid = self.identity_registry.identify_call(cell_id, (), reflection.resolve_qualified_names(loads, user_ns))
 
         # TODO: there is a lot of code shared between wrapped_func and run_cell!
         # TODO: These fingerprints are not cached! Do we want to cache them?
@@ -218,7 +212,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             assert isinstance(memoized_result, StoredResult)
             if call_fingerprint != memoized_result.fingerprint:
                 # TODO: log
-                print(f"{vid.cid} is stale!" f"\t{call_fingerprint}\nvs\n\t{memoized_result.fingerprint}")
+                print(f"{vid} is stale!" f"\t{call_fingerprint}\nvs\n\t{memoized_result.fingerprint}")
             assert isinstance(memoized_result.value, tuple)
             user_ns.update(zip(*memoized_result.value))
         else:

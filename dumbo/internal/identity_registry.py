@@ -7,10 +7,9 @@ from dumbo.internal.fingerprints import FingerprintProvider
 from dumbo.internal.identities import (
     ValueFingerprintIdentity,
     FunctionIdentity,
-    CallIdentity,
     ValueIdentity,
     CellIdentity,
-    IdentityProvider)
+    IdentityProvider, ValueCallIdentity)
 from dumbo.internal.online_cache import DumboOnlineCache
 
 
@@ -42,11 +41,11 @@ class IdentityRegistry(IdentityProvider):
         self.fid_to_func[fid] = cell_function
         return fid
 
-    def identify_call(self, fid, args, kwargs) -> CallIdentity:
+    def identify_call(self, fid, args, kwargs) -> ValueCallIdentity:
         args_vid = tuple(self.identify_value(arg) for arg in args)
         kwargs_vid = frozenset((name, self.identify_value(value)) for name, value in kwargs.items())
 
-        return CallIdentity(fid, args_vid, kwargs_vid)
+        return ValueCallIdentity(fid, args_vid, kwargs_vid)
 
     def identify_value(self, value) -> ValueIdentity:
         vid = self.online_cache.get_vid(value)

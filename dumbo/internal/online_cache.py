@@ -1,6 +1,6 @@
 from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.weakref_utils import IdMapFinalizer
-from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
+from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, StoredValue, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
@@ -123,7 +123,7 @@ class DumboOnlineCache:
         # We only support caching computed values for now.
         # Fingerprints/hashes can change and named values can be reloaded
         # using initialization code.
-        if isinstance(vid, ValueCIDIdentity):
+        if isinstance(vid, ValueCallIdentity):
             assert stored_value is None or isinstance(stored_value, StoredResult)
             self.persisted_cache.update(vid, stored_value)
 

@@ -1,7 +1,7 @@
 import dumbo.internal.persisted_cache
 import pytest
 
-from dumbo.internal.identities import value_name_identity, StoredValue, ValueCIDIdentity, StoredResult
+from dumbo.internal.identities import value_name_identity, StoredValue, ValueCallIdentity, StoredResult
 from dumbo.internal.online_cache import DumboOnlineCache
 
 from .testing import DummyPersistedCache, BoxedValue
@@ -79,7 +79,7 @@ def test_doc_updating_none_works_cid():
     persisted_cache = DummyPersistedCache()
     online_cache = DumboOnlineCache(persisted_cache)
 
-    vid = ValueCIDIdentity(None)
+    vid = ValueCallIdentity(None, None, None)
     value = StoredResult(BoxedValue(5), None)
     online_cache.update(vid, value)
 

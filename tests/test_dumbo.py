@@ -84,7 +84,7 @@ def test_dumbo_register_external_value(dumbo_fib_fixture):
 
     result = dumbo_fib_fixture(magic_number)
 
-    assert main.dumbo.online_cache.value_id_to_vid[id(result)].cid.args_vid[0] == value_name_identity(unique_name)
+    assert main.dumbo.online_cache.value_id_to_vid[id(result)].args_vid[0] == value_name_identity(unique_name)
 
     dumbo.register_external_value(unique_name, None)
 
