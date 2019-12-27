@@ -35,8 +35,6 @@ class IdentityRegistry(IdentityProvider):
         return fid
 
     def identify_cell(self, name: str, cell_function: FunctionType) -> FunctionIdentity:
-        # TODO: register cell functions too!
-        # (How can we check whether they go stale otherwise!)
         if name is not None:
             fid = CellIdentity(name, None)
         else:

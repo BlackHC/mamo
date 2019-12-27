@@ -8,6 +8,7 @@ from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
 
 
+# TODO: big Q: does online cache only hold CIDs and external objects?
 # TODO: use weaksets!
 # TODO: to repr method
 class DumboOnlineCache:
@@ -38,12 +39,6 @@ class DumboOnlineCache:
         if vid is None:
             return None
 
-        if isinstance(vid, ValueFingerprintIdentity):
-            return vid.fingerprint
-        elif isinstance(vid, ValueNameIdentity):
-            return FingerprintName(vid.unique_name)
-
-        assert isinstance(vid, ValueCIDIdentity)
         if vid in self.vid_to_value:
             stored_value = self.vid_to_value[vid]
         else:
