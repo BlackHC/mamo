@@ -1,7 +1,7 @@
 import pickle
 from dataclasses import dataclass
 
-import objproxies
+from dumbo.internal.weakref_utils import ObjectProxy
 
 from typing import Optional, Tuple
 
@@ -116,10 +116,10 @@ class DefaultModuleExtension(ModuleExtension):
         if isinstance(value, tuple):
             return tuple(self.module_registry.wrap_return_value(item) for item in value)
 
-        if not isinstance(value, objproxies.ObjectProxy):
-            return objproxies.ObjectProxy(value)
+        if not isinstance(value, ObjectProxy):
+            return ObjectProxy(value)
 
         # If the value is already wrapped, create a new proxy.
         # This is necessary so that if we pass the same object through nested dumbo functions
         # the result doesn't share identities (which is important for staleness!)
-        return objproxies.ObjectProxy(value.__subject__)
+        return ObjectProxy(value.__subject__)

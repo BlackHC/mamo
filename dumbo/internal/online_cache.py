@@ -1,6 +1,5 @@
-from abc import abstractmethod, ABC
-
 from dumbo.internal.fingerprints import Fingerprint
+from dumbo.internal.weakref_utils import IdMapFinalizer
 from dumbo.internal.identities import ValueCIDIdentity, ValueIdentity, StoredValue, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
@@ -15,6 +14,7 @@ class DumboOnlineCache:
 
     vid_to_value: Dict[ValueIdentity, StoredValue]
     value_id_to_vid: Dict[int, ValueIdentity]
+    id_map_finalizer: IdMapFinalizer
     tag_to_vid: DictBimap[str, ValueIdentity]
     # We need to keep track of unlinked values to be able to tell that they are stale now!
     # TODO: use a weakset!
@@ -25,6 +25,7 @@ class DumboOnlineCache:
 
         self.vid_to_value = {}
         self.value_id_to_vid = {}
+        self.id_map_finalizer = IdMapFinalizer()
         self.tag_to_vid = DictBimap()
         self.stale_values = set()
 
@@ -70,6 +71,12 @@ class DumboOnlineCache:
         # TODO: might want to flush this separately (because it might use less memory)
         self.value_id_to_vid.clear()
 
+    def _release_value(self, id_value):
+        vid = self.value_id_to_vid[id_value]
+        del self.value_id_to_vid[id_value]
+        del self.vid_to_value[vid]
+        self.tag_to_vid.del_value(vid)
+
     def update(self, vid: ValueIdentity, stored_value: Optional[StoredValue]):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
@@ -98,11 +105,14 @@ class DumboOnlineCache:
         # Now perform mutations:
         # Unlink existing value.
         if existing_value is not None:
-            del self.value_id_to_vid[id(existing_value.value)]
-            self.stale_values.add(id(existing_value.value))
+            id_existing_value = id(existing_value.value)
+            del self.value_id_to_vid[id_existing_value]
+            self.stale_values.add(id_existing_value)
+            self.id_map_finalizer.release(existing_value.value)
 
         if stored_value is not None:
             self.vid_to_value[vid] = stored_value
+            self.id_map_finalizer.register(stored_value.value, self._release_value)
 
             if existing_vid is None:
                 self.value_id_to_vid[id(stored_value.value)] = vid

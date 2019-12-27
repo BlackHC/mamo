@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from types import FunctionType
-from typing import Tuple, FrozenSet, Generic, TypeVar, Dict, Optional
+from typing import Tuple, FrozenSet, Generic, TypeVar, Optional
 
 from dumbo.internal.fingerprints import Fingerprint, CallFingerprint, FingerprintName
 

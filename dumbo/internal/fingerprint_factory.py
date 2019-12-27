@@ -1,10 +1,10 @@
 from types import CodeType, FunctionType
-from typing import Optional, Set, Dict, List, MutableMapping
+from typing import Optional, Set, Dict, MutableMapping, Any
 from weakref import WeakKeyDictionary
 
 from dumbo.internal import reflection
 from dumbo.internal.fingerprints import FunctionFingerprint, DeepFunctionFingerprint, CallFingerprint, \
-    FingerprintDigestValue, FingerprintProvider, FingerprintName
+    FingerprintDigestValue, FingerprintProvider
 from dumbo.internal.identities import CallIdentity, IdentityProvider, ValueFingerprintIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -13,18 +13,27 @@ from dumbo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
 # We can define a FunctionCall wrapper and pass that through the module system to allow for customization!
+from dumbo.internal.weakref_utils import WeakKeyIdMap
+
+
 class FingerprintFactory(FingerprintProvider):
     online_cache: DumboOnlineCache
     identity_provider: IdentityProvider
+
+    cache: WeakKeyIdMap[Any, FingerprintDigestValue]
+
     # actually a WeakKeyDictionary!
     code_object_deps: MutableMapping[CodeType, FunctionDependencies]
     # If not None, allows for deep function fingerprinting.
     deep_fingerprint_source_prefix: Optional[str]
     deep_fingerprint_stack: Set[CodeType]
 
-    def __init__(self, deep_fingerprint_source_prefix: Optional[str], online_cache: DumboOnlineCache, identity_provider: IdentityProvider):
+    def __init__(self, deep_fingerprint_source_prefix: Optional[str], online_cache: DumboOnlineCache,
+                 identity_provider: IdentityProvider):
         self.online_cache = online_cache
         self.identity_provider = identity_provider
+
+        self.cache = WeakKeyIdMap()
 
         self.code_object_deps = WeakKeyDictionary()
 
@@ -32,11 +41,13 @@ class FingerprintFactory(FingerprintProvider):
         self.deep_fingerprint_stack = set()
 
     def fingerprint_value(self, value):
+        # TODO: do I want to store strings like that?
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return FingerprintDigestValue(value, value)
+
         fingerprint = None
 
-        if value is None:
-            fingerprint = FingerprintDigestValue(None, None)
-        elif isinstance(value, FunctionType):
+        if isinstance(value, FunctionType):
             fingerprint = self._get_function_fingerprint(value, allow_deep=False)
         else:
             vid = self.online_cache.get_vid(value)
@@ -45,6 +56,13 @@ class FingerprintFactory(FingerprintProvider):
                     fingerprint = vid.fingerprint
                 else:
                     fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
+
+            # Don't try to cache values that are part of online_cache.
+            if fingerprint is not None:
+                return fingerprint
+
+        if fingerprint is None:
+            fingerprint = self.cache.get(value)
 
         if fingerprint is None:
             object_saver = MODULE_EXTENSIONS.get_object_saver(value)
@@ -58,6 +76,8 @@ class FingerprintFactory(FingerprintProvider):
                 " Please either add an extension to support it,"
                 " or register it with a name"
             )
+
+        self.cache[value] = fingerprint
 
         return fingerprint
 
