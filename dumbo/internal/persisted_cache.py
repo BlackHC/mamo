@@ -5,7 +5,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.identities import ValueCallIdentity, StoredResult, ComputedValueIdentity
+from dumbo.internal.identities import StoredResult, ComputedValueIdentity
 from dumbo.internal.bimap import PersistentBimap
 
 from transaction import TransactionManager

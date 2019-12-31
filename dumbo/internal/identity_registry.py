@@ -1,5 +1,5 @@
 from types import FunctionType
-from typing import Dict, Any, Set, Tuple
+from typing import Dict
 
 from dumbo.internal import reflection
 
