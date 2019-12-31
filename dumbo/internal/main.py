@@ -27,26 +27,27 @@ from dumbo.internal import default_module_extension
 MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
 
 
-class ExecutionPolicy:
+class ReExecutionPolicy:
     def __call__(
-        self,
-        dumbo: "Dumbo",
-        vid: ComputedValueIdentity,
-        fingerprint: Fingerprint,
-        stored_fingerprint: Optional[Fingerprint],
+            self,
+            dumbo: "Dumbo",
+            vid: ComputedValueIdentity,
+            fingerprint: Fingerprint,
+            stored_fingerprint: Optional[Fingerprint],
     ):
-        pass
+        return True
 
 
 def execute_decision_only_missing(
-    dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
+        dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
 ):
     return False
 
 
 def execute_decision_stale(max_depth):
     def decider(
-        dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
+            dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint,
+            stored_fingerprint: Optional[Fingerprint]
     ):
         if fingerprint != stored_fingerprint:
             return True
@@ -63,16 +64,17 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     persisted_cache: DumboPersistedCache
 
-    reexecution_policy: ExecutionPolicy
+    re_execution_policy: ReExecutionPolicy
 
-    def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str]):
+    def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
+                 re_execution_policy: Optional[ReExecutionPolicy]):
         self.persisted_cache = persisted_cache
         self.online_cache = DumboOnlineCache(persisted_cache)
 
         self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix, self.online_cache, self)
         self.identity_registry = IdentityRegistry(self.online_cache, self)
 
-        self.reexecution_policy = execute_decision_only_missing
+        self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
 
     def identify_value(self, value):
         return self.identity_registry.identify_value(value)
@@ -137,7 +139,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             return False
 
         fingerprint = self.fingerprint_factory.fingerprint_computed_value(vid)
-        stored_fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
+        stored_fingerprint = self.online_cache.get_stored_fingerprint(vid)
 
         if fingerprint != stored_fingerprint:
             return True
@@ -176,8 +178,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         self.online_cache.update(vid, None)
 
     def _shall_execute(self, vid, fingerprint):
-        stored_fingerprint = dumbo.online_cache.get_fingerprint_from_vid(vid)
-        return stored_fingerprint is None or self.reexecution_policy(self, vid, fingerprint, stored_fingerprint)
+        stored_fingerprint = dumbo.online_cache.get_stored_fingerprint(vid)
+        return stored_fingerprint is None or self.re_execution_policy(self, vid, fingerprint, stored_fingerprint)
 
     @staticmethod
     def wrap_function(func):
@@ -302,17 +304,20 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         self.persisted_cache.testing_close()
         self.identity_registry = None
         self.fingerprint_factory = None
+        import gc
+        gc.collect()
 
 
 dumbo: Optional[Dumbo] = None
 
 
 def init_dumbo(
-    memory_only=True,
-    path: Optional[str] = None,
-    externally_cached_path: Optional[str] = None,
-    # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
-    deep_fingerprint_source_prefix: Optional[str] = None,
+        memory_only=True,
+        path: Optional[str] = None,
+        externally_cached_path: Optional[str] = None,
+        # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
+        deep_fingerprint_source_prefix: Optional[str] = None,
+        re_execution_policy: Optional[ReExecutionPolicy] = None
 ):
     global dumbo
     assert dumbo is None
@@ -322,4 +327,4 @@ def init_dumbo(
         if memory_only
         else DumboPersistedCache.from_file(path, externally_cached_path)
     )
-    dumbo = Dumbo(persisted_cache, deep_fingerprint_source_prefix)
+    dumbo = Dumbo(persisted_cache, deep_fingerprint_source_prefix, re_execution_policy)

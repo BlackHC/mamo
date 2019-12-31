@@ -20,7 +20,7 @@ from dumbo.internal.identities import (
     ComputedValueIdentity,
     ValueIdentityVisitor,
     ValueCellResultIdentity,
-)
+    ValueIdentity)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
@@ -43,10 +43,10 @@ class FingerprintFactory(FingerprintProvider):
     deep_fingerprint_stack: Set[CodeType]
 
     def __init__(
-        self,
-        deep_fingerprint_source_prefix: Optional[str],
-        online_cache: DumboOnlineCache,
-        identity_provider: IdentityProvider,
+            self,
+            deep_fingerprint_source_prefix: Optional[str],
+            online_cache: DumboOnlineCache,
+            identity_provider: IdentityProvider,
     ):
         self.online_cache = online_cache
         self.identity_provider = identity_provider
@@ -66,14 +66,15 @@ class FingerprintFactory(FingerprintProvider):
         fingerprint = None
 
         if isinstance(value, FunctionType):
-            fingerprint = self._get_function_fingerprint(value, allow_deep=False)
+            fingerprint = FingerprintDigestValue(self._get_function_fingerprint(value, allow_deep=False),
+                                            reflection.get_func_qualified_name(value))
         else:
             vid = self.online_cache.get_vid(value)
             if vid is not None:
                 if isinstance(vid, ValueFingerprintIdentity):
                     fingerprint = vid.fingerprint
                 else:
-                    fingerprint = self.online_cache.get_fingerprint_from_vid(vid)
+                    fingerprint = self.online_cache.get_stored_fingerprint(vid)
 
             # Don't try to cache values that are part of online_cache.
             if fingerprint is not None:
@@ -126,7 +127,13 @@ class FingerprintFactory(FingerprintProvider):
         return CellResultFingerprint(cell_fingerprint, key)
 
     def fingerprint_computed_value(self, vid: ComputedValueIdentity):
+        # TODO: move back to main.py:is_stale_vid!
         outer_self = self
+
+        def fingerprint_from_vid(vid: ValueIdentity):
+            if isinstance(vid, ValueFingerprintIdentity):
+                return vid.fingerprint
+            return outer_self.online_cache.get_stored_fingerprint(vid)
 
         class Visitor(ValueIdentityVisitor):
             def visit_call(self, vid: ValueCallIdentity):
@@ -134,10 +141,10 @@ class FingerprintFactory(FingerprintProvider):
                     outer_self.identity_provider.resolve_function(vid.fid)
                 )
                 arg_fingerprints = [
-                    outer_self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid
+                    fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid
                 ]
                 kwarg_fingerprints = [
-                    (name, outer_self.online_cache.get_fingerprint_from_vid(arg_vid))
+                    (name, fingerprint_from_vid(arg_vid))
                     for name, arg_vid in vid.kwargs_vid
                 ]
                 return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))

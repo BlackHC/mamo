@@ -35,7 +35,7 @@ class DumboOnlineCache:
     def has_value(self, value):
         return id(value) in self.value_id_to_vid
 
-    def get_fingerprint_from_vid(self, vid: Optional[ValueIdentity]) -> Optional[Fingerprint]:
+    def get_stored_fingerprint(self, vid: Optional[ValueIdentity]) -> Optional[Fingerprint]:
         if vid is None:
             return None
 

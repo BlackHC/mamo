@@ -397,3 +397,8 @@ If we reexecute a cell, it will overwrite the globals, but not wrap them.
 So this should be part of the cell function.
 
 Also, we cannot necessarily reexecute all calls because we might not store all values.
+
+## get_fignerprint_vid
+
+I don't understand the structure of this. OnlineCache contains the cache. get_fingerprint_vid doesn't need to be a part of it.
+And fingerprint_computable_value doesn't have to be a part of fingerprint_registry?
