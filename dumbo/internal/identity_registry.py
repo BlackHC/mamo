@@ -1,5 +1,5 @@
 from types import FunctionType
-from typing import Dict
+from typing import Dict, Any, Set, Tuple
 
 from dumbo.internal import reflection
 
@@ -10,8 +10,7 @@ from dumbo.internal.identities import (
     ValueIdentity,
     CellIdentity,
     IdentityProvider,
-    ValueCallIdentity,
-)
+    ValueCallIdentity, ValueCellResultIdentity)
 from dumbo.internal.online_cache import DumboOnlineCache
 
 
@@ -35,11 +34,8 @@ class IdentityRegistry(IdentityProvider):
         self.fid_to_func[fid] = func
         return fid
 
-    def identify_cell(self, name: str, cell_function: FunctionType) -> FunctionIdentity:
-        if name is not None:
-            fid = CellIdentity(name, None)
-        else:
-            fid = CellIdentity(None, reflection.get_func_fingerprint(cell_function))
+    def identify_cell(self, name: str, cell_function: FunctionType) -> CellIdentity:
+        fid = CellIdentity(name)
         self.fid_to_func[fid] = cell_function
         return fid
 
@@ -48,6 +44,9 @@ class IdentityRegistry(IdentityProvider):
         kwargs_vid = frozenset((name, self.identify_value(value)) for name, value in kwargs.items())
 
         return ValueCallIdentity(fid, args_vid, kwargs_vid)
+
+    def identify_cell_result(self, cell_identity: CellIdentity, key: str) -> ValueCellResultIdentity:
+        return ValueCellResultIdentity(cell_identity, key)
 
     def identify_value(self, value) -> ValueIdentity:
         vid = self.online_cache.get_vid(value)

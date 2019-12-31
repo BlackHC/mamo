@@ -45,12 +45,29 @@ class DeepFunctionFingerprint(FunctionFingerprint):
     func_calls: FrozenSet[Tuple[Tuple[str, ...], FunctionFingerprint]]
 
 
+class ResultFingerprint(Fingerprint):
+    pass
+
+
 @dataclass(frozen=True)
-class CallFingerprint(Fingerprint):
+class CallFingerprint(ResultFingerprint):
     function: FunctionFingerprint
     # Need fingerprints everywhere! This needs to be a separate hierarchy!
     args: Tuple[Optional[Fingerprint], ...]
     kwargs: FrozenSet[Tuple[str, Optional[Fingerprint]]]
+
+
+@dataclass(frozen=True)
+class CellFingerprint:
+    cell_code_fingerprint: FunctionFingerprint
+    globals_load: FrozenSet[Tuple[Tuple[str, ...], Tuple["ValueIdentity", Fingerprint]]]
+    outputs: FrozenSet[str]
+
+
+@dataclass(frozen=True)
+class CellResultFingerprint(ResultFingerprint):
+    cell: CellFingerprint
+    key: str
 
 
 class FingerprintProvider:

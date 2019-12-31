@@ -1,7 +1,9 @@
+from abc import ABC
 from dataclasses import dataclass
-from typing import Tuple, FrozenSet, Generic, TypeVar, Optional
+from types import FunctionType
+from typing import Tuple, FrozenSet, Generic, TypeVar
 
-from dumbo.internal.fingerprints import Fingerprint, CallFingerprint, FingerprintName
+from dumbo.internal.fingerprints import Fingerprint, ResultFingerprint, FingerprintName
 
 T = TypeVar("T")
 
@@ -33,15 +35,16 @@ class FunctionIdentity:
 
 @dataclass(frozen=True)
 class CellIdentity(FunctionIdentity):
-    """Cells don't have an identity beyond their code."""
+    pass
 
-    qualified_name: Optional[str]
-    fingerprint: object
+
+class ComputedValueIdentity(ValueIdentity, ABC):
+    pass
 
 
 # TODO: merge this into CallIdentity?
 @dataclass(frozen=True)
-class ValueCallIdentity(ValueIdentity):
+class ValueCallIdentity(ComputedValueIdentity):
     fid: FunctionIdentity
     args_vid: Tuple[ValueIdentity, ...]
     kwargs_vid: FrozenSet[Tuple[str, ValueIdentity]]
@@ -58,10 +61,19 @@ class ValueCallIdentity(ValueIdentity):
         for name, value in self.kwargs_vid:
             args.append(f"{name}={value.get_external_info()}")
         if args:
-            args = "_" + "_".join(args)
+            args = ",".join(args)
         else:
             args = ""
         return f"{self.fid.qualified_name}({args})"
+
+
+@dataclass(frozen=True)
+class ValueCellResultIdentity(ComputedValueIdentity):
+    cell: CellIdentity
+    key: str
+
+    def get_external_info(self):
+        return f"cell_{self.cell.name}.{self.key}"
 
 
 @dataclass
@@ -73,12 +85,37 @@ class StoredValue(Generic[T]):
 # This is kept by online and persistent cache and might later include more debug info.
 @dataclass
 class StoredResult(StoredValue[T]):
-    fingerprint: CallFingerprint
+    fingerprint: ResultFingerprint
 
 
 class IdentityProvider:
-    def identify_value(self, value):
+    def identify_value(self, value) -> ValueIdentity:
         raise NotImplementedError()
 
-    def resolve_function(self, fid: FunctionIdentity):
+    def resolve_function(self, fid: FunctionIdentity) -> FunctionType:
         raise NotImplementedError()
+
+
+class ValueIdentityVisitor:
+    def visit_fingerprint(self, vid: ValueFingerprintIdentity):
+        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+
+    def visit_call(self, vid: ValueCallIdentity):
+        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+
+    def visit_cell_result(self, vid: ValueCellResultIdentity):
+        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+
+    def visit_computed_value(self, vid: ComputedValueIdentity):
+        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+
+    def visit(self, vid: ValueIdentity):
+        if isinstance(vid, ValueFingerprintIdentity):
+            return self.visit_fingerprint(vid)
+        elif isinstance(vid, ValueCallIdentity):
+            return self.visit_call(vid)
+        elif isinstance(vid, ValueCellResultIdentity):
+            return self.visit_cell_result(vid)
+        elif isinstance(vid, ComputedValueIdentity):
+            return self.visit_computed_value(vid)
+        raise NotImplementedError(f'Unknown type {type(vid)} for {vid}')

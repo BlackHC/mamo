@@ -390,3 +390,10 @@ This means my fingerprint semantics was wrong. I must not take globals into acco
 I can use global reads to check for purity and/or enforce ignoring specific global reads.
 (Alternatively I could support stochastic functions as alternative to non-pure ones.)
 
+## Revisiting Jupyter Cells
+
+The big Q: what do we do with stale Jupyter code cells?
+If we reexecute a cell, it will overwrite the globals, but not wrap them.
+So this should be part of the cell function.
+
+Also, we cannot necessarily reexecute all calls because we might not store all values.

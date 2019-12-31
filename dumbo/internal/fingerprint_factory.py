@@ -9,12 +9,12 @@ from dumbo.internal.fingerprints import (
     CallFingerprint,
     FingerprintDigestValue,
     FingerprintProvider,
-)
-from dumbo.internal.identities import IdentityProvider, ValueFingerprintIdentity, ValueCallIdentity
+    FingerprintDigest, CellResultFingerprint, CellFingerprint)
+from dumbo.internal.identities import IdentityProvider, ValueFingerprintIdentity, ValueCallIdentity, \
+    ComputedValueIdentity, ValueIdentityVisitor, ValueCellResultIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
-
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
 # We can define a FunctionCall wrapper and pass that through the module system to allow for customization!
@@ -25,7 +25,7 @@ class FingerprintFactory(FingerprintProvider):
     online_cache: DumboOnlineCache
     identity_provider: IdentityProvider
 
-    cache: WeakKeyIdMap[Any, FingerprintDigestValue]
+    cache: WeakKeyIdMap[Any, FingerprintDigest]
 
     # actually a WeakKeyDictionary!
     code_object_deps: MutableMapping[CodeType, FunctionDependencies]
@@ -34,10 +34,10 @@ class FingerprintFactory(FingerprintProvider):
     deep_fingerprint_stack: Set[CodeType]
 
     def __init__(
-        self,
-        deep_fingerprint_source_prefix: Optional[str],
-        online_cache: DumboOnlineCache,
-        identity_provider: IdentityProvider,
+            self,
+            deep_fingerprint_source_prefix: Optional[str],
+            online_cache: DumboOnlineCache,
+            identity_provider: IdentityProvider,
     ):
         self.online_cache = online_cache
         self.identity_provider = identity_provider
@@ -94,10 +94,6 @@ class FingerprintFactory(FingerprintProvider):
         # Function fingerprints (when we allow deep fingerprints) cannot be cached
         return self._get_function_fingerprint(func, allow_deep=True)
 
-    def fingerprint_cell_code(self, cell_code, namespace):
-        # Function fingerprints (when we allow deep fingerprints) cannot be cached
-        return self._get_deep_fingerprint(cell_code, namespace)
-
     def fingerprint_call(self, func: FunctionType, args, kwargs: Dict):
         # Call fingerprints (when we allow deep fingerprints) cannot be cached
         func_fingerprint = self._get_function_fingerprint(func)
@@ -106,13 +102,41 @@ class FingerprintFactory(FingerprintProvider):
 
         return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
 
-    def fingerprint_call_vid(self, vid: ValueCallIdentity):
-        func_fingerprint = self.identity_provider.resolve_function(vid.fid)
-        arg_fingerprints = [self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid]
-        kwarg_fingerprints = [
-            (name, self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in vid.kwargs_vid
-        ]
-        return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
+    def fingerprint_cell(self, cell_function: FunctionType) -> CellFingerprint:
+        cell_code_fingerprint = self._get_deep_fingerprint(cell_function.__code__,
+                                                           cell_function.__globals__)
+        global_loads, global_stores = reflection.get_global_loads_stores(cell_function)
+        resolved_globals_loads = reflection.resolve_qualified_names(global_loads, cell_function.__globals__)
+        globals_load_fingerprint = frozenset(
+            (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value))) for name, value in
+            resolved_globals_loads.items())
+        cell_fingerprint = CellFingerprint(cell_code_fingerprint, globals_load_fingerprint,
+                                           frozenset(global_stores))
+        return cell_fingerprint
+
+    def fingerprint_cell_result(self, cell_fingerprint: CellFingerprint, key: str):
+        return CellResultFingerprint(cell_fingerprint, key)
+
+    def fingerprint_computed_value(self, vid: ComputedValueIdentity):
+        outer_self = self
+
+        class Visitor(ValueIdentityVisitor):
+            def visit_call(self, vid: ValueCallIdentity):
+                func_fingerprint = outer_self.fingerprint_function(
+                    outer_self.identity_provider.resolve_function(vid.fid))
+                arg_fingerprints = [outer_self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in
+                                    vid.args_vid]
+                kwarg_fingerprints = [
+                    (name, outer_self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in
+                    vid.kwargs_vid
+                ]
+                return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
+
+            def visit_cell_result(self, vid: ValueCellResultIdentity):
+                cell_function = outer_self.identity_provider.resolve_function(vid.cell)
+                return outer_self.fingerprint_cell_result(outer_self.fingerprint_cell(cell_function), vid.key)
+
+        return Visitor().visit(vid)
 
     def _get_code_object_deps(self, code_object) -> FunctionDependencies:
         code_object_deps = self.code_object_deps.get(code_object)
