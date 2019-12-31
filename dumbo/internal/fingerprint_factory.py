@@ -9,9 +9,18 @@ from dumbo.internal.fingerprints import (
     CallFingerprint,
     FingerprintDigestValue,
     FingerprintProvider,
-    FingerprintDigest, CellResultFingerprint, CellFingerprint)
-from dumbo.internal.identities import IdentityProvider, ValueFingerprintIdentity, ValueCallIdentity, \
-    ComputedValueIdentity, ValueIdentityVisitor, ValueCellResultIdentity
+    FingerprintDigest,
+    CellResultFingerprint,
+    CellFingerprint,
+)
+from dumbo.internal.identities import (
+    IdentityProvider,
+    ValueFingerprintIdentity,
+    ValueCallIdentity,
+    ComputedValueIdentity,
+    ValueIdentityVisitor,
+    ValueCellResultIdentity,
+)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
 from dumbo.internal.reflection import FunctionDependencies
@@ -34,10 +43,10 @@ class FingerprintFactory(FingerprintProvider):
     deep_fingerprint_stack: Set[CodeType]
 
     def __init__(
-            self,
-            deep_fingerprint_source_prefix: Optional[str],
-            online_cache: DumboOnlineCache,
-            identity_provider: IdentityProvider,
+        self,
+        deep_fingerprint_source_prefix: Optional[str],
+        online_cache: DumboOnlineCache,
+        identity_provider: IdentityProvider,
     ):
         self.online_cache = online_cache
         self.identity_provider = identity_provider
@@ -103,15 +112,14 @@ class FingerprintFactory(FingerprintProvider):
         return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
 
     def fingerprint_cell(self, cell_function: FunctionType) -> CellFingerprint:
-        cell_code_fingerprint = self._get_deep_fingerprint(cell_function.__code__,
-                                                           cell_function.__globals__)
+        cell_code_fingerprint = self._get_deep_fingerprint(cell_function.__code__, cell_function.__globals__)
         global_loads, global_stores = reflection.get_global_loads_stores(cell_function)
         resolved_globals_loads = reflection.resolve_qualified_names(global_loads, cell_function.__globals__)
         globals_load_fingerprint = frozenset(
-            (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value))) for name, value in
-            resolved_globals_loads.items())
-        cell_fingerprint = CellFingerprint(cell_code_fingerprint, globals_load_fingerprint,
-                                           frozenset(global_stores))
+            (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value)))
+            for name, value in resolved_globals_loads.items()
+        )
+        cell_fingerprint = CellFingerprint(cell_code_fingerprint, globals_load_fingerprint, frozenset(global_stores))
         return cell_fingerprint
 
     def fingerprint_cell_result(self, cell_fingerprint: CellFingerprint, key: str):
@@ -123,12 +131,14 @@ class FingerprintFactory(FingerprintProvider):
         class Visitor(ValueIdentityVisitor):
             def visit_call(self, vid: ValueCallIdentity):
                 func_fingerprint = outer_self.fingerprint_function(
-                    outer_self.identity_provider.resolve_function(vid.fid))
-                arg_fingerprints = [outer_self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in
-                                    vid.args_vid]
+                    outer_self.identity_provider.resolve_function(vid.fid)
+                )
+                arg_fingerprints = [
+                    outer_self.online_cache.get_fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid
+                ]
                 kwarg_fingerprints = [
-                    (name, outer_self.online_cache.get_fingerprint_from_vid(arg_vid)) for name, arg_vid in
-                    vid.kwargs_vid
+                    (name, outer_self.online_cache.get_fingerprint_from_vid(arg_vid))
+                    for name, arg_vid in vid.kwargs_vid
                 ]
                 return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 

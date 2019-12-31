@@ -12,7 +12,10 @@ from dumbo.internal.identities import (
     StoredValue,
     IdentityProvider,
     value_name_identity,
-    ComputedValueIdentity, ValueCallIdentity, ValueCellResultIdentity)
+    ComputedValueIdentity,
+    ValueCallIdentity,
+    ValueCellResultIdentity,
+)
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -25,19 +28,26 @@ MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleEx
 
 
 class ExecutionPolicy:
-    def __call__(self, dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint,
-                 stored_fingerprint: Optional[Fingerprint]):
+    def __call__(
+        self,
+        dumbo: "Dumbo",
+        vid: ComputedValueIdentity,
+        fingerprint: Fingerprint,
+        stored_fingerprint: Optional[Fingerprint],
+    ):
         pass
 
 
-def execute_decision_only_missing(dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint,
-                                  stored_fingerprint: Optional[Fingerprint]):
+def execute_decision_only_missing(
+    dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
+):
     return False
 
 
 def execute_decision_stale(max_depth):
-    def decider(dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint,
-                stored_fingerprint: Optional[Fingerprint]):
+    def decider(
+        dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
+    ):
         if fingerprint != stored_fingerprint:
             return True
         return dumbo.is_stale_vid(vid, depth=max_depth)
@@ -141,8 +151,10 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             )
         elif isinstance(vid, ValueCellResultIdentity):
             assert isinstance(fingerprint, CellResultFingerprint)
-            return any(self.is_stale_vid(input_vid, depth=depth - 1) for name, (input_vid, input_fingerprint) in
-                       fingerprint.cell.globals_load)
+            return any(
+                self.is_stale_vid(input_vid, depth=depth - 1)
+                for name, (input_vid, input_fingerprint) in fingerprint.cell.globals_load
+            )
 
     def is_cached(self, func, args, kwargs):
         fid = self.identity_registry.identify_function(func)
@@ -230,8 +242,9 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         outputs = cell_fingerprint.outputs
 
         result_vids = {name: self.identity_registry.identify_cell_result(cell_id, name) for name in outputs}
-        result_fingerprints = {name: self.fingerprint_factory.fingerprint_cell_result(cell_fingerprint, name) for name
-                               in outputs}
+        result_fingerprints = {
+            name: self.fingerprint_factory.fingerprint_cell_result(cell_fingerprint, name) for name in outputs
+        }
 
         # TODO: this adds some staleness overhead but not sure how to handle composites atm.
         if any(dumbo._shall_execute(result_vids[name], result_fingerprints[name]) for name in outputs):
@@ -295,11 +308,11 @@ dumbo: Optional[Dumbo] = None
 
 
 def init_dumbo(
-        memory_only=True,
-        path: Optional[str] = None,
-        externally_cached_path: Optional[str] = None,
-        # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
-        deep_fingerprint_source_prefix: Optional[str] = None,
+    memory_only=True,
+    path: Optional[str] = None,
+    externally_cached_path: Optional[str] = None,
+    # By default, we don't use deep fingerprints except in the main module/jupyter notebooks.
+    deep_fingerprint_source_prefix: Optional[str] = None,
 ):
     global dumbo
     assert dumbo is None

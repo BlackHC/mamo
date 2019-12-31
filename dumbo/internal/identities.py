@@ -98,16 +98,16 @@ class IdentityProvider:
 
 class ValueIdentityVisitor:
     def visit_fingerprint(self, vid: ValueFingerprintIdentity):
-        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+        raise TypeError(f"{type(vid)} not supported! (for {vid})")
 
     def visit_call(self, vid: ValueCallIdentity):
-        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+        raise TypeError(f"{type(vid)} not supported! (for {vid})")
 
     def visit_cell_result(self, vid: ValueCellResultIdentity):
-        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+        raise TypeError(f"{type(vid)} not supported! (for {vid})")
 
     def visit_computed_value(self, vid: ComputedValueIdentity):
-        raise TypeError(f'{type(vid)} not supported! (for {vid})')
+        raise TypeError(f"{type(vid)} not supported! (for {vid})")
 
     def visit(self, vid: ValueIdentity):
         if isinstance(vid, ValueFingerprintIdentity):
@@ -118,4 +118,4 @@ class ValueIdentityVisitor:
             return self.visit_cell_result(vid)
         elif isinstance(vid, ComputedValueIdentity):
             return self.visit_computed_value(vid)
-        raise NotImplementedError(f'Unknown type {type(vid)} for {vid}')
+        raise NotImplementedError(f"Unknown type {type(vid)} for {vid}")

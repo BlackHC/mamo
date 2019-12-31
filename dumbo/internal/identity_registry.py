@@ -10,7 +10,9 @@ from dumbo.internal.identities import (
     ValueIdentity,
     CellIdentity,
     IdentityProvider,
-    ValueCallIdentity, ValueCellResultIdentity)
+    ValueCallIdentity,
+    ValueCellResultIdentity,
+)
 from dumbo.internal.online_cache import DumboOnlineCache
 
 
