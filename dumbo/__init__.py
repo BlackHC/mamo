@@ -62,3 +62,10 @@ def forget(value):
     _ensure_dumbo_init()
 
     main.dumbo.forget(value)
+
+
+def run_cell(name, cell_code, namespace):
+    _ensure_dumbo_init()
+
+    main.dumbo.run_cell(name, cell_code, namespace)
+

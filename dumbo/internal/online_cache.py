@@ -68,8 +68,9 @@ class DumboOnlineCache:
 
     def flush(self):
         self.vid_to_value.clear()
-        # TODO: might want to flush this separately (because it might use less memory)
+        # TODO: might want to clear this separately (because it might use less memory)
         self.value_id_to_vid.clear()
+        self.id_map_finalizer.clear()
 
     def _release_value(self, id_value):
         vid = self.value_id_to_vid[id_value]

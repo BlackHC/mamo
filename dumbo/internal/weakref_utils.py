@@ -47,9 +47,13 @@ class IdMapFinalizer(Generic[KT]):
             finalizer.detach()
             del self.id_to_finalizer[id_value]
 
-    def __del__(self):
+    def clear(self):
         for finalizer in self.id_to_finalizer.values():
             finalizer.detach()
+        self.id_to_finalizer.clear()
+
+    def __del__(self):
+        self.clear()
 
 
 class WeakKeyIdMap(MutableMapping[KT, VT]):

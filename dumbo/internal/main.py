@@ -121,7 +121,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
         return self.is_stale_vid(vid, depth=depth)
 
-    def is_stale(self, value, *, depth):
+    def is_stale(self, value, *, depth=-1):
         if self.online_cache.is_stale(value):
             return True
 
@@ -226,17 +226,16 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
         return wrapped_func
 
-    def run_cell(self, name: Optional[str], cell: str, user_ns: dict):
+    def run_cell(self, name: Optional[str], cell_code: str, user_ns: dict):
         # TODO: wrap in a function and execute, so we need explicit globals for stores?
         function_module = ast.parse("def cell_function():\n  pass")
-        cell_module = ast.parse(cell)
+        cell_module = ast.parse(cell_code)
         function_module.body[0].body = cell_module.body
         compiled_function = compile(function_module, "cell", "exec")
 
         local_ns = {}
         exec(compiled_function, user_ns, local_ns)
         cell_function = local_ns["cell_function"]
-        code_object = cell_function.__code__
 
         cell_id = self.identity_registry.identify_cell(name, cell_function)
         cell_fingerprint = self.fingerprint_factory.fingerprint_cell(cell_function)
