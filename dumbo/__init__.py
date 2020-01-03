@@ -1,5 +1,4 @@
 from dumbo.internal import main
-from dumbo.internal.main import init_dumbo
 
 # TODO: what about exceptions?
 # TODO: what about wrapping methods in class definitions?
