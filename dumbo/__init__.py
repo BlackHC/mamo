@@ -10,6 +10,7 @@ dumbo = main.Dumbo.wrap_function
 
 def _ensure_dumbo_init():
     if main.dumbo is None:
+        print('Initializing Dumbo!')
         main.init_dumbo()
 
 
@@ -52,7 +53,7 @@ def get_cached_value_identities(persisted=False):
     return vids
 
 
-def is_stale(value, *, depth=1):
+def is_stale(value, *, depth=-1):
     _ensure_dumbo_init()
 
     return main.dumbo.is_stale(value, depth=depth)
@@ -68,4 +69,3 @@ def run_cell(name, cell_code, namespace):
     _ensure_dumbo_init()
 
     main.dumbo.run_cell(name, cell_code, namespace)
-

@@ -115,6 +115,10 @@ class FingerprintFactory(FingerprintProvider):
     def fingerprint_cell(self, cell_function: FunctionType) -> CellFingerprint:
         cell_code_fingerprint = self._get_deep_fingerprint(cell_function.__code__, cell_function.__globals__)
         global_loads, global_stores = reflection.get_global_loads_stores(cell_function)
+
+        # Remove loads that are part of stores.
+        global_loads = {name_path for name_path in global_loads if name_path[0] not in global_stores}
+
         resolved_globals_loads = reflection.resolve_qualified_names(global_loads, cell_function.__globals__)
         globals_load_fingerprint = frozenset(
             (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value)))
@@ -171,9 +175,11 @@ class FingerprintFactory(FingerprintProvider):
 
             resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
 
+            # TODO: this does not seem to resolve builtins!!?!?! debug
+
             global_funcs = {
                 qn: self._get_function_fingerprint(resolved_func, allow_deep=True)
-                for qn, resolved_func in resolved_funcs.items()
+                for qn, resolved_func in resolved_funcs.items() if resolved_func
             }
 
             return DeepFunctionFingerprint(
@@ -183,6 +189,15 @@ class FingerprintFactory(FingerprintProvider):
             self.deep_fingerprint_stack.remove(code_object)
 
     def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[FunctionFingerprint]:
+        # TODO: more tests? code review?
+        if not isinstance(func, FunctionType):
+            assert callable(func), func
+            if hasattr(func, '__call__'):
+                func = func.__call__
+            else:
+                # log and fail softly?
+                raise NotImplementedError(f'Missing support for fingerprinting callable {func}!')
+
         if func is None:
             func_fingerprint = FunctionFingerprint(None)
         elif reflection.is_func_builtin(func):

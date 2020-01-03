@@ -121,7 +121,8 @@ def get_global_loads_stores(func_or_code):
 def get_code_object_fingerprint(code_object: CodeType):
     # TODO: add cache?
     hash_method = hashlib.md5(code_object.co_code)
-    hash_method.update(marshal.dumps(code_object.co_consts))
+    # This seems to only output stable objects for version==2!
+    hash_method.update(marshal.dumps(code_object.co_consts, 2))
     return hash_method.digest()
 
 
