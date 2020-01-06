@@ -13,6 +13,7 @@ from typing import FrozenSet, Tuple, Optional
 @dataclass(frozen=True)
 class FunctionDependencies:
     global_loads: FrozenSet[Tuple[str, ...]]
+    global_stores: FrozenSet[str]
     func_calls: FrozenSet[Tuple[str, ...]]
 
 
@@ -20,18 +21,18 @@ def get_module_name(value):
     return value.__class__.__module__
 
 
-def get_qualified_name(func):
+def _get_qualified_name(func):
     # TODO: handle Jupyter notebooks?
     # In notebooks, __module__ will be "__main__".
     return f"{func.__module__}.{func.__qualname__}"
 
 
 def get_type_qualified_name(value):
-    return get_qualified_name(type(value))
+    return _get_qualified_name(type(value))
 
 
 def get_func_qualified_name(func):
-    return get_qualified_name(func)
+    return _get_qualified_name(func)
 
 
 # TODO: we need tests for this! (right now it's just tested by the spike code in some way).
@@ -41,18 +42,18 @@ def get_calls(func_or_code: FunctionType):
 
     instructions = list(dis.get_instructions(func_or_code))
     for i in range(len(instructions)):
-        instruction = instructions[i]
-        if instruction.opname == "CALL_FUNCTION":
+        def unroll_call(leftover_stacksize):
+            nonlocal instruction, j
             # + 1 as we ignore the return value that will be pushed onto the stack.
             stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
-            # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
-            reversed_qualified_name = []
-            j = i - 1
 
-            while j >= 0 and stack_size > 1:
+            while j >= 0 and stack_size > leftover_stacksize:
                 instruction = instructions[j]
                 stack_size -= dis.stack_effect(instruction.opcode, instruction.arg)
                 j -= 1
+
+        def collect_callee():
+            nonlocal instruction, j
 
             while j >= 0:
                 instruction = instructions[j]
@@ -65,6 +66,28 @@ def get_calls(func_or_code: FunctionType):
                 else:
                     break
                 j -= 1
+
+        instruction = instructions[i]
+        if instruction.opname in ("CALL_FUNCTION", "CALL_FUNCTION_KW", "CALL_FUNCTION_EX"):
+            # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
+            reversed_qualified_name = []
+            j = i - 1
+
+            unroll_call(1)
+
+            collect_callee()
+        elif instruction.opname == 'CALL_METHOD':
+            # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
+            reversed_qualified_name = []
+            j = i - 1
+
+            unroll_call(2)
+
+            instruction = instructions[j]
+            if instruction.opname == 'LOAD_METHOD':
+                reversed_qualified_name.append(instruction.argval)
+                j -= 1
+                collect_callee()
 
     return called_funcs
 
@@ -151,12 +174,15 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
     # And figure out whether we want to include dependencies for functions that are being
     # called.
 
-    loads = get_global_loads(func)
+    loads, stores = get_global_loads_stores(func)
     calls = get_calls(func)
 
     loads.difference_update(calls)
 
-    return FunctionDependencies(frozenset(loads), frozenset(calls))
+    loads = {load for load in loads if load[0] not in stores}
+    calls = {call for call in calls if call[0] not in stores}
+
+    return FunctionDependencies(frozenset(loads), frozenset(stores), frozenset(calls))
 
 
 def is_func_local(func, local_prefix: Optional[str]):
