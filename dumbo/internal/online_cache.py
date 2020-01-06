@@ -78,6 +78,7 @@ class DumboOnlineCache:
         del self.vid_to_value[vid]
         self.tag_to_vid.del_value(vid)
 
+    # TODO: change signature to vid, value, metadata!
     def update(self, vid: ValueIdentity, stored_value: Optional[StoredValue]):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
@@ -88,7 +89,8 @@ class DumboOnlineCache:
         existing_value = None
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
-            if existing_value is stored_value:
+            # TODO: this needs a test! (bug: missing .value here)
+            if existing_value.value is stored_value.value:
                 return
 
         existing_vid = self.value_id_to_vid.get(id(stored_value.value)) if stored_value is not None else None

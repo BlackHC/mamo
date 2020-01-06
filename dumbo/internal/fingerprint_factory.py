@@ -175,9 +175,11 @@ class FingerprintFactory(FingerprintProvider):
 
             resolved_funcs = reflection.resolve_qualified_names(func_deps.func_calls, namespace)
 
+            # TODO: this does not seem to resolve builtins!!?!?! debug
+
             global_funcs = {
                 qn: self._get_function_fingerprint(resolved_func, allow_deep=True)
-                for qn, resolved_func in resolved_funcs.items()
+                for qn, resolved_func in resolved_funcs.items() if resolved_func
             }
 
             return DeepFunctionFingerprint(
@@ -187,6 +189,15 @@ class FingerprintFactory(FingerprintProvider):
             self.deep_fingerprint_stack.remove(code_object)
 
     def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[FunctionFingerprint]:
+        # TODO: more tests? code review?
+        if not isinstance(func, FunctionType):
+            assert callable(func), func
+            if hasattr(func, '__call__'):
+                func = func.__call__
+            else:
+                # log and fail softly?
+                raise NotImplementedError(f'Missing support for fingerprinting callable {func}!')
+
         if func is None:
             func_fingerprint = FunctionFingerprint(None)
         elif reflection.is_func_builtin(func):

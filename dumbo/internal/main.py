@@ -123,11 +123,13 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     def is_stale(self, value, *, depth=-1):
         if self.online_cache.is_stale(value):
+            print('Global variable has become stale (unknown to online cache!)')
             return True
 
         vid = self._get_vid(value)
         if vid is None:
             # TODO: throw?
+            print('Vid not found!')
             return True
 
         return self.is_stale_vid(vid, depth=depth)
@@ -142,6 +144,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         stored_fingerprint = self.online_cache.get_stored_fingerprint(vid)
 
         if fingerprint != stored_fingerprint:
+            print(f'{vid} is stale!')
+            print(f'{fingerprint}\nvs\n{stored_fingerprint}')
             return True
 
         if depth == 0:

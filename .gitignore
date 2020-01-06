@@ -1,2 +1,6 @@
 dumbo.code-workspace
 *.pyc
+.idea
+*.egg-info
+pip-wheel-metadata
+.vscode
