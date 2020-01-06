@@ -1,5 +1,7 @@
 from dumbo.internal import main
 
+from dumbo.internal.main import init_dumbo
+
 # TODO: what about exceptions?
 # TODO: what about wrapping methods in class definitions?
 # Shouldn't really support that maybe because we won't be able to perform
@@ -10,7 +12,7 @@ dumbo = main.Dumbo.wrap_function
 def _ensure_dumbo_init():
     if main.dumbo is None:
         print('Initializing Dumbo!')
-        main.init_dumbo()
+        init_dumbo()
 
 
 def register_external_value(unique_name, value):

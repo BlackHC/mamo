@@ -90,7 +90,7 @@ class DumboOnlineCache:
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
             # TODO: this needs a test! (bug: missing .value here)
-            if existing_value.value is stored_value.value:
+            if stored_value is not None and existing_value.value is stored_value.value:
                 return
 
         existing_vid = self.value_id_to_vid.get(id(stored_value.value)) if stored_value is not None else None

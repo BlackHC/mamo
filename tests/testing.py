@@ -47,7 +47,7 @@ def dumbo_fixture():
         main.dumbo.testing_close()
         main.dumbo = None
 
-    dumbo.init_dumbo()
+    main.init_dumbo()
 
     yield main.dumbo
 
