@@ -7,7 +7,7 @@ from types import FunctionType, CodeType
 import builtins
 
 # Bytecode-extracted features. Independent of runtime and can be cached.
-from typing import FrozenSet, Tuple, Optional
+from typing import FrozenSet, Tuple, Optional, List, Set
 
 
 @dataclass(frozen=True)
@@ -35,87 +35,126 @@ def get_func_qualified_name(func):
     return _get_qualified_name(func)
 
 
-# TODO: extract a helper class that knows how to walk the instruction list
-def get_calls(func_or_code: FunctionType):
-    def unroll_call(leftover_stacksize):
-        nonlocal instruction, j
+@dataclass
+class CodeAnalyzer:
+    instructions: List[dis.Instruction]
+    index: int = 0
+
+    def get_argval(self):
+        return self.instructions[self.index].argval
+
+    def check_opnames(self, *opnames):
+        return self.instructions[self.index].opname in opnames
+
+    def match_opnames(self, *opnames):
+        if self.instructions[self.index].opname in opnames:
+            self.index -= 1
+            return True
+        return False
+
+    def nest(self):
+        return CodeAnalyzer(self.instructions, self.index)
+
+    def unroll_op_stack(self, remainder_stacksize):
+        instruction = self.instructions[self.index]
         # + 1 as we ignore the return value that will be pushed onto the stack.
         stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
 
-        while j >= 0 and stack_size > leftover_stacksize:
-            instruction = instructions[j]
+        self.index -= 1
+
+        while self.index >= 0 and stack_size > remainder_stacksize:
+            instruction = self.instructions[self.index]
             stack_size -= dis.stack_effect(instruction.opcode, instruction.arg)
-            j -= 1
+            self.index -= 1
 
-    def collect_callee():
-        nonlocal instruction, j
+        return self
 
-        while j >= 0:
-            instruction = instructions[j]
+    def unroll_load(self, reversed_qualified_name):
+        while self.index >= 0:
+            instruction = self.instructions[self.index]
             if instruction.opname == "LOAD_GLOBAL":
                 reversed_qualified_name.append(instruction.argval)
-                called_funcs.add(tuple(reversed(reversed_qualified_name)))
-                break
-            elif instruction.opname in ("LOAD_ATTR",):
+                return tuple(reversed(reversed_qualified_name))
+            elif instruction.opname == "LOAD_ATTR":
                 reversed_qualified_name.append(instruction.argval)
             else:
                 break
-            j -= 1
+            self.index -= 1
 
-    called_funcs = set()
+        # TODO: log?
+        return None
 
-    instructions = list(dis.get_instructions(func_or_code))
-    for i in range(len(instructions)):
+    def unroll_load_method(self):
+        if self.check_opnames('LOAD_METHOD'):
+            qualified_name = [self.get_argval()]
+            self.index -= 1
+            qualified_name = self.unroll_load(qualified_name)
+            return qualified_name
 
-        instruction = instructions[i]
-        if instruction.opname in ("CALL_FUNCTION", "CALL_FUNCTION_KW", "CALL_FUNCTION_EX"):
-            # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
-            reversed_qualified_name = []
-            j = i - 1
-
-            unroll_call(1)
-
-            collect_callee()
-        elif instruction.opname == 'CALL_METHOD':
-            # We go back in reverse now and pick up LOAD_ATTRs and LOAD_GLOBAL.
-            reversed_qualified_name = []
-            j = i - 1
-
-            unroll_call(2)
-
-            instruction = instructions[j]
-            if instruction.opname == 'LOAD_METHOD':
-                reversed_qualified_name.append(instruction.argval)
-                j -= 1
-                collect_callee()
-
-    return called_funcs
-
-
-def get_global_loads_stores(func_or_code):
-    loads = set()
-    global_stores = set()
-
-    instructions = list(reversed(list(dis.get_instructions(func_or_code))))
-    while instructions:
-        instruction = instructions.pop()
-        if instruction.opname == "STORE_GLOBAL":
-            global_stores.add(instruction.argval)
-        elif instruction.opname == "LOAD_GLOBAL":
+    def try_parse_load(self, global_loads):
+        instruction = self.instructions[self.index]
+        if instruction.opname == "LOAD_GLOBAL":
             qualified_name = [instruction.argval]
 
             # Now try to resolve attribute accesses.
-            while instructions:
-                next_instruction = instructions[-1]
-                if next_instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
-                    instructions.pop()
-                    qualified_name.append(next_instruction.argval)
+            while self.index <= len(self.instructions):
+                self.index += 1
+                instruction = self.instructions[self.index]
+                if instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
+                    qualified_name.append(instruction.argval)
                 else:
                     break
 
-            loads.add(tuple(qualified_name))
+            global_loads.add(tuple(qualified_name))
+            return True
 
-    return loads, global_stores
+        return False
+
+    def try_parse_call(self, called_funcs: Set[Tuple[str, ...]]):
+        if self.check_opnames("CALL_FUNCTION", "CALL_FUNCTION_KW", "CALL_FUNCTION_EX"):
+            qualified_name = self.nest().unroll_op_stack(1).unroll_load([])
+            if qualified_name is not None:
+                called_funcs.add(qualified_name)
+
+            self.index += 1
+            return True
+        elif self.check_opnames('CALL_METHOD'):
+            qualified_name = self.nest().unroll_op_stack(2).unroll_load_method()
+            if qualified_name is not None:
+                called_funcs.add(qualified_name)
+
+            self.index += 1
+            return True
+        return False
+
+    def try_parse_store(self, global_stores: Set[str]):
+        if self.check_opnames("STORE_GLOBAL"):
+            global_stores.add(self.get_argval())
+            self.index += 1
+            return True
+        return False
+
+    def analyze(self):
+        called_funcs = set()
+        global_stores = set()
+        global_loads = set()
+
+        while self.index < len(self.instructions):
+            if self.try_parse_load(global_loads):
+                pass
+            elif self.try_parse_store(global_stores):
+                pass
+            elif self.try_parse_call(called_funcs):
+                pass
+            else:
+                self.index += 1
+
+        return FunctionDependencies(frozenset(global_loads), frozenset(global_stores), frozenset(called_funcs))
+
+    @staticmethod
+    def from_func_or_code(func_or_code: FunctionType):
+        instructions = list(dis.get_instructions(func_or_code))
+        return CodeAnalyzer(instructions)
 
 
 def get_code_object_fingerprint(code_object: CodeType):
@@ -151,15 +190,14 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
     # And figure out whether we want to include dependencies for functions that are being
     # called.
 
-    loads, stores = get_global_loads_stores(func)
-    calls = get_calls(func)
+    deps = CodeAnalyzer.from_func_or_code(func).analyze()
+
+    loads = {load for load in deps.global_loads if load[0] not in deps.global_stores}
+    calls = {call for call in deps.func_calls if call[0] not in deps.global_stores}
 
     loads.difference_update(calls)
 
-    loads = {load for load in loads if load[0] not in stores}
-    calls = {call for call in calls if call[0] not in stores}
-
-    return FunctionDependencies(frozenset(loads), frozenset(stores), frozenset(calls))
+    return FunctionDependencies(frozenset(loads), frozenset(deps.global_stores), frozenset(calls))
 
 
 def is_func_local(func, local_prefix: Optional[str]):

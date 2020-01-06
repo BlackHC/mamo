@@ -72,20 +72,30 @@ def test_get_module_name_custom_class():
     assert reflection.get_module_name(DummyClass()) == "tests.test_reflection"
 
 
-def test_get_calls_simple():
-    assert reflection.get_calls(calls_simple_func) == {('simple_func',)}
+def test_get_func_deps_simple():
+    assert reflection.get_func_deps(calls_simple_func) == FunctionDependencies(global_loads=frozenset(),
+                                                                               global_stores=frozenset(),
+                                                                               func_calls=frozenset({('simple_func',)}))
 
 
-def test_get_calls_kw():
-    assert reflection.get_calls(calls_kw_func) == {('simple_func',)}
+def test_get_func_deps_kw():
+    assert reflection.get_func_deps(calls_kw_func) == FunctionDependencies(global_loads=frozenset(),
+                                                                           global_stores=frozenset(),
+                                                                           func_calls=frozenset({('simple_func',)}))
 
 
-def test_get_calls_ex():
-    assert reflection.get_calls(calls_ex_func) == {('simple_func',)}
+def test_get_func_deps_ex():
+    assert reflection.get_func_deps(calls_ex_func) == FunctionDependencies(global_loads=frozenset(),
+                                                                           global_stores=frozenset(),
+                                                                           func_calls=frozenset({('simple_func',)}))
 
 
-def test_get_calls_nested_module():
-    assert reflection.get_calls(calls_nested_module) == {('reflection', 'dis', 'get_instructions')}
+def test_get_func_deps_nested_module():
+    assert reflection.get_func_deps(calls_nested_module) == FunctionDependencies(global_loads=frozenset(),
+                                                                                 global_stores=frozenset(),
+                                                                                 func_calls=frozenset({('reflection',
+                                                                                                        'dis',
+                                                                                                        'get_instructions')}))
 
 
 def test_get_func_deps_ignores_calls_from_changed():
@@ -94,7 +104,7 @@ def test_get_func_deps_ignores_calls_from_changed():
                                         global_stores=frozenset({'global_variable'}), func_calls=frozenset())
 
 
-def test_get_func_deps_ignores_calls_from_changed():
+def test_get_func_deps_ignores_calls_from_changed_globals():
     deps = reflection.get_func_deps(reads_writes_global)
     # Removes loads of globals that are also stored. (Conservative)
     assert deps == FunctionDependencies(global_loads=frozenset({('reflection', 'dis')}),
