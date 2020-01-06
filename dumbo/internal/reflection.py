@@ -35,37 +35,37 @@ def get_func_qualified_name(func):
     return _get_qualified_name(func)
 
 
-# TODO: we need tests for this! (right now it's just tested by the spike code in some way).
+# TODO: extract a helper class that knows how to walk the instruction list
 def get_calls(func_or_code: FunctionType):
-    # TODOs: support CALL_METHOD and LOAD_METHOD?
+    def unroll_call(leftover_stacksize):
+        nonlocal instruction, j
+        # + 1 as we ignore the return value that will be pushed onto the stack.
+        stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
+
+        while j >= 0 and stack_size > leftover_stacksize:
+            instruction = instructions[j]
+            stack_size -= dis.stack_effect(instruction.opcode, instruction.arg)
+            j -= 1
+
+    def collect_callee():
+        nonlocal instruction, j
+
+        while j >= 0:
+            instruction = instructions[j]
+            if instruction.opname == "LOAD_GLOBAL":
+                reversed_qualified_name.append(instruction.argval)
+                called_funcs.add(tuple(reversed(reversed_qualified_name)))
+                break
+            elif instruction.opname in ("LOAD_ATTR",):
+                reversed_qualified_name.append(instruction.argval)
+            else:
+                break
+            j -= 1
+
     called_funcs = set()
 
     instructions = list(dis.get_instructions(func_or_code))
     for i in range(len(instructions)):
-        def unroll_call(leftover_stacksize):
-            nonlocal instruction, j
-            # + 1 as we ignore the return value that will be pushed onto the stack.
-            stack_size = 1 - dis.stack_effect(instruction.opcode, instruction.arg)
-
-            while j >= 0 and stack_size > leftover_stacksize:
-                instruction = instructions[j]
-                stack_size -= dis.stack_effect(instruction.opcode, instruction.arg)
-                j -= 1
-
-        def collect_callee():
-            nonlocal instruction, j
-
-            while j >= 0:
-                instruction = instructions[j]
-                if instruction.opname == "LOAD_GLOBAL":
-                    reversed_qualified_name.append(instruction.argval)
-                    called_funcs.add(tuple(reversed(reversed_qualified_name)))
-                    break
-                elif instruction.opname in ("LOAD_ATTR",):
-                    reversed_qualified_name.append(instruction.argval)
-                else:
-                    break
-                j -= 1
 
         instruction = instructions[i]
         if instruction.opname in ("CALL_FUNCTION", "CALL_FUNCTION_KW", "CALL_FUNCTION_EX"):
@@ -90,29 +90,6 @@ def get_calls(func_or_code: FunctionType):
                 collect_callee()
 
     return called_funcs
-
-
-def get_global_loads(func_or_code):
-    loads = set()
-
-    instructions = list(reversed(list(dis.get_instructions(func_or_code))))
-    while instructions:
-        instruction = instructions.pop()
-        if instruction.opname == "LOAD_GLOBAL":
-            qualified_name = [instruction.argval]
-
-            # Now try to resolve attribute accesses.
-            while instructions:
-                next_instruction = instructions[-1]
-                if next_instruction.opname in ("LOAD_ATTR", "LOAD_METHOD"):
-                    instructions.pop()
-                    qualified_name.append(next_instruction.argval)
-                else:
-                    break
-
-            loads.add(tuple(qualified_name))
-
-    return loads
 
 
 def get_global_loads_stores(func_or_code):

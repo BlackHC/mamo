@@ -98,4 +98,4 @@ def test_get_func_deps_ignores_calls_from_changed():
     deps = reflection.get_func_deps(reads_writes_global)
     # Removes loads of globals that are also stored. (Conservative)
     assert deps == FunctionDependencies(global_loads=frozenset({('reflection', 'dis')}),
-                                        global_stores=frozenset({'global_variable'}), func_calls=frozenset()) != ()
+                                        global_stores=frozenset({'global_variable'}), func_calls=frozenset())

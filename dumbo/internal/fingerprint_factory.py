@@ -114,7 +114,11 @@ class FingerprintFactory(FingerprintProvider):
 
     def fingerprint_cell(self, cell_function: FunctionType) -> CellFingerprint:
         cell_code_fingerprint = self._get_deep_fingerprint(cell_function.__code__, cell_function.__globals__)
-        global_loads, global_stores = reflection.get_global_loads_stores(cell_function)
+
+        func_deps = reflection.get_func_deps(cell_function)
+        global_loads = func_deps.global_loads
+        global_stores = func_deps.global_stores
+
         resolved_globals_loads = reflection.resolve_qualified_names(global_loads, cell_function.__globals__)
         globals_load_fingerprint = frozenset(
             (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value)))
