@@ -127,7 +127,7 @@ class DumboPersistedCache:
 
         return StoredResult(cached_value, stored_result.fingerprint)
 
-    def update(self, vid: ComputedValueIdentity, value: StoredResult):
+    def update(self, vid: ComputedValueIdentity, value: Optional[StoredResult]):
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:

@@ -1,6 +1,6 @@
 from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.weakref_utils import IdMapFinalizer
-from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, StoredValue, StoredResult
+from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, StoredValue, ComputedValueIdentity, StoredResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
@@ -8,10 +8,11 @@ from dumbo.internal.bimap import DictBimap
 
 # TODO: big Q: does online cache only hold CIDs and external objects?
 # TODO: use weaksets!
-# TODO: to repr method
+# TODO: repr method
 class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
 
+    # TODO: this should be a weak dict in the values.
     vid_to_value: Dict[ValueIdentity, StoredValue]
     value_id_to_vid: Dict[int, ValueIdentity]
     id_map_finalizer: IdMapFinalizer
@@ -84,33 +85,39 @@ class DumboOnlineCache:
         # only then performs mutations.
         # This can still fail to be atomic because of bugs
         # but not because of invalid parameters.
+        value_id = id(stored_value.value) if stored_value is not None else None
 
         # Validation checks:
+
+        # 1. If `vid` is already cached, don't trigger any events if we want to store the same value.
         existing_value = None
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
-            # TODO: this needs a test! (bug: missing .value here)
-            if stored_value is not None and existing_value.value is stored_value.value:
+
+            if existing_value.value is stored_value.value:
                 return
 
-        existing_vid = self.value_id_to_vid.get(id(stored_value.value)) if stored_value is not None else None
+        # 2. If `value` is already stored, it already has to be linked to the same `vid`.
+        existing_vid = self.value_id_to_vid.get(value_id) if value_id is not None else None
         if existing_vid is not None:
-            if existing_vid is not vid:
-                # is not is very strict (vs !=) but that's okay.
+            # An early-out ought to have happened already above.
+            assert existing_vid is not vid
 
-                # ERROR: Value has already been linked to another vid.
-                raise AttributeError(
-                    f"{vid} has same value as {existing_vid}!"
-                    'We follow an "each computation, different result" policy.'
-                    "This makes tracking possible."
-                )
+            # ERROR: Value has already been linked to another vid.
+            raise AttributeError(
+                f"{vid} has same value as {existing_vid}!"
+                'We follow an "each computation, different result" policy.'
+                "This makes tracking possible."
+            )
 
-        # Now perform mutations:
+        # Now: value is new (or we would have early-outed) and there might be an existing_value linked to vid.
+
+        # Perform mutations:
         # Unlink existing value.
         if existing_value is not None:
-            id_existing_value = id(existing_value.value)
-            del self.value_id_to_vid[id_existing_value]
-            self.stale_values.add(id_existing_value)
+            existing_value_id = id(existing_value.value)
+            del self.value_id_to_vid[existing_value_id]
+            self.stale_values.add(existing_value_id)
             self.id_map_finalizer.release(existing_value.value)
 
         if stored_value is not None:
@@ -118,7 +125,7 @@ class DumboOnlineCache:
             self.id_map_finalizer.register(stored_value.value, self._release_value)
 
             if existing_vid is None:
-                self.value_id_to_vid[id(stored_value.value)] = vid
+                self.value_id_to_vid[value_id] = vid
         else:
             del self.vid_to_value[vid]
             self.tag_to_vid.del_value(vid)
@@ -138,8 +145,9 @@ class DumboOnlineCache:
             raise ValueError(f"{vid} has not been cached!")
 
         self.tag_to_vid.update(tag_name, vid)
-        # TODO: this breaks if vid is not stored in persisted_cache because it is not a value call identity!
-        self.persisted_cache.tag(tag_name, vid)
+        # TODO: add tests for tagging external values (regression for this added if isinstance)
+        if vid is None or isinstance(vid, ComputedValueIdentity):
+            self.persisted_cache.tag(tag_name, vid)
 
     def get_tag_stored_value(self, tag_name: str):
         tag_vid = self.tag_to_vid.get_value(tag_name)
