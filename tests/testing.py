@@ -6,7 +6,7 @@ from _pytest.fixtures import fixture
 import dumbo
 from dumbo.internal import persisted_cache, main
 from dumbo.internal.cached_values import DBCachedValue
-from dumbo.internal.identities import ValueIdentity, StoredResult
+from dumbo.internal.identities import ValueIdentity, AnnotatedResult
 
 
 @dataclass
@@ -21,7 +21,7 @@ class DummyPersistedCache(persisted_cache.DumboPersistedCache):
         self.tag_to_vid = {}
 
     def try_create_cached_value(self, vid, stored_result):
-        return StoredResult(DBCachedValue(stored_result), stored_result.fingerprint)
+        return AnnotatedResult(DBCachedValue(stored_result), stored_result.fingerprint)
 
     def update(self, vid, value):
         self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value) if value is not None else None

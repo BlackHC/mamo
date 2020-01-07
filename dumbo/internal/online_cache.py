@@ -1,6 +1,6 @@
 from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.weakref_utils import IdMapFinalizer
-from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, StoredValue, ComputedValueIdentity, StoredResult
+from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, AnnotatedValue, ComputedValueIdentity, AnnotatedResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
 from dumbo.internal.bimap import DictBimap
@@ -13,7 +13,7 @@ class DumboOnlineCache:
     persisted_cache: DumboPersistedCache
 
     # TODO: this should be a weak dict in the values.
-    vid_to_value: Dict[ValueIdentity, StoredValue]
+    vid_to_value: Dict[ValueIdentity, AnnotatedValue]
     value_id_to_vid: Dict[int, ValueIdentity]
     id_map_finalizer: IdMapFinalizer
     tag_to_vid: DictBimap[str, ValueIdentity]
@@ -80,7 +80,7 @@ class DumboOnlineCache:
         self.tag_to_vid.del_value(vid)
 
     # TODO: change signature to vid, value, metadata!
-    def update(self, vid: ValueIdentity, stored_value: Optional[StoredValue]):
+    def update(self, vid: ValueIdentity, stored_value: Optional[AnnotatedValue]):
         # This is a transactional function that first error-checks/validates and
         # only then performs mutations.
         # This can still fail to be atomic because of bugs
@@ -134,7 +134,7 @@ class DumboOnlineCache:
         # Fingerprints/hashes can change and named values can be reloaded
         # using initialization code.
         if isinstance(vid, ValueCallIdentity):
-            assert stored_value is None or isinstance(stored_value, StoredResult)
+            assert stored_value is None or isinstance(stored_value, AnnotatedResult)
             self.persisted_cache.update(vid, stored_value)
 
     def is_stale(self, value):

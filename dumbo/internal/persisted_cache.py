@@ -5,7 +5,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.identities import StoredResult, ComputedValueIdentity
+from dumbo.internal.identities import AnnotatedResult, ComputedValueIdentity
 from dumbo.internal.bimap import PersistentBimap
 
 from transaction import TransactionManager
@@ -100,8 +100,8 @@ class DumboPersistedCache:
         return self.storage.get_new_external_id()
 
     def try_create_cached_value(
-        self, vid: ComputedValueIdentity, stored_result: StoredResult
-    ) -> Optional[StoredResult[CachedValue]]:
+        self, vid: ComputedValueIdentity, stored_result: AnnotatedResult
+    ) -> Optional[AnnotatedResult[CachedValue]]:
         object_saver = MODULE_EXTENSIONS.get_object_saver(stored_result.value)
         if object_saver is None:
             # TODO: log?
@@ -125,9 +125,9 @@ class DumboPersistedCache:
             # TODO: log?
             return None
 
-        return StoredResult(cached_value, stored_result.fingerprint)
+        return AnnotatedResult(cached_value, stored_result.fingerprint)
 
-    def update(self, vid: ComputedValueIdentity, value: Optional[StoredResult]):
+    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedResult]):
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:
@@ -154,10 +154,10 @@ class DumboPersistedCache:
     def get_cached_vids(self):
         return self.storage.vid_to_cached_value.keys()
 
-    def get_cached_value(self, vid) -> Optional[StoredResult[CachedValue]]:
+    def get_cached_value(self, vid) -> Optional[AnnotatedResult[CachedValue]]:
         return self.storage.vid_to_cached_value.get(vid)
 
-    def get_stored_result(self, vid) -> Optional[StoredResult]:
+    def get_stored_result(self, vid) -> Optional[AnnotatedResult]:
         cached_value = self.get_cached_value(vid)
         if cached_value is None:
             return None
@@ -165,7 +165,7 @@ class DumboPersistedCache:
         # Load value
         loaded_value = cached_value.value.load()
         wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
-        return StoredResult(wrapped_value, cached_value.fingerprint)
+        return AnnotatedResult(wrapped_value, cached_value.fingerprint)
 
     def tag(self, tag_name: str, vid: Optional[ComputedValueIdentity]):
         if vid is not None and vid not in self.storage.vid_to_cached_value:

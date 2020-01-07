@@ -8,8 +8,8 @@ from dumbo.internal.fingerprints import FingerprintProvider, Fingerprint, CellRe
 from dumbo.internal.identities import (
     FunctionIdentity,
     ValueIdentity,
-    StoredResult,
-    StoredValue,
+    AnnotatedResult,
+    AnnotatedValue,
     IdentityProvider,
     value_name_identity,
     ComputedValueIdentity,
@@ -207,7 +207,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             if dumbo._shall_execute(vid, call_fingerprint):
                 result = func(*args, **kwargs)
                 wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.online_cache.update(vid, StoredResult(wrapped_result, call_fingerprint))
+                dumbo.online_cache.update(vid, AnnotatedResult(wrapped_result, call_fingerprint))
 
                 return wrapped_result
 
@@ -260,7 +260,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.online_cache.update(result_vids[name], StoredResult(user_ns[name], result_fingerprints[name]))
+                dumbo.online_cache.update(result_vids[name], AnnotatedResult(user_ns[name], result_fingerprints[name]))
         else:
             for name in outputs:
                 vid = result_vids[name]
@@ -269,13 +269,13 @@ class Dumbo(IdentityProvider, FingerprintProvider):
                     # log?
                     raise RuntimeError(f"Couldn't find cached result for {vid}!")
 
-                assert isinstance(cached_result, StoredResult)
+                assert isinstance(cached_result, AnnotatedResult)
                 user_ns[name] = cached_result.value
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.
         vid = value_name_identity(unique_name)
-        self.online_cache.update(vid, StoredValue(value, vid.fingerprint))
+        self.online_cache.update(vid, AnnotatedValue(value, vid.fingerprint))
 
         # TODO: add a test!
 

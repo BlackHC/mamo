@@ -77,14 +77,14 @@ class ValueCellResultIdentity(ComputedValueIdentity):
 
 
 @dataclass
-class StoredValue(Generic[T]):
+class AnnotatedValue(Generic[T]):
     value: T
     fingerprint: Fingerprint
 
 
 # This is kept by online and persistent cache and might later include more debug info.
 @dataclass
-class StoredResult(StoredValue[T]):
+class AnnotatedResult(AnnotatedValue[T]):
     fingerprint: ResultFingerprint
 
 
