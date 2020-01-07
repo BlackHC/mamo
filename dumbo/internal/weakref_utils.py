@@ -84,4 +84,6 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         return len(self.id_map_to_value)
 
     def __iter__(self) -> Iterator[KT]:
-        return map(self.id_map_finalizer.lookup_id, self.id_map_to_value)
+        # TODO: add a test that shows that this is necessary to avoid deletions
+        # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
+        return iter(list(map(self.id_map_finalizer.lookup_id, self.id_map_to_value)))
