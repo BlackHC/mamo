@@ -1,5 +1,5 @@
 from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.weakref_utils import IdMapFinalizer
+from dumbo.internal.weakref_utils import IdMapFinalizer, WeakIdSet
 from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, AnnotatedValue, ComputedValueIdentity, AnnotatedResult
 from dumbo.internal.persisted_cache import DumboPersistedCache
 from typing import Dict, Optional, Set
@@ -18,8 +18,7 @@ class DumboOnlineCache:
     id_map_finalizer: IdMapFinalizer
     tag_to_vid: DictBimap[str, ValueIdentity]
     # We need to keep track of unlinked values to be able to tell that they are stale now!
-    # TODO: use a weakset!
-    stale_values: Set[int]
+    stale_values: WeakIdSet
 
     def __init__(self, persisted_cache):
         self.persisted_cache = persisted_cache
@@ -28,7 +27,7 @@ class DumboOnlineCache:
         self.value_id_to_vid = {}
         self.id_map_finalizer = IdMapFinalizer()
         self.tag_to_vid = DictBimap()
-        self.stale_values = set()
+        self.stale_values = WeakIdSet()
 
     def has_vid(self, vid):
         return vid in self.vid_to_value or self.persisted_cache.has_vid(vid)
@@ -93,8 +92,8 @@ class DumboOnlineCache:
         existing_value = None
         if vid in self.vid_to_value:
             existing_value = self.vid_to_value[vid]
-
-            if existing_value.value is stored_value.value:
+            # TODO: this keeps being buggy because of the stored_value is None scenario.
+            if stored_value is not None and existing_value.value is stored_value.value:
                 return
 
         # 2. If `value` is already stored, it already has to be linked to the same `vid`.
@@ -117,7 +116,7 @@ class DumboOnlineCache:
         if existing_value is not None:
             existing_value_id = id(existing_value.value)
             del self.value_id_to_vid[existing_value_id]
-            self.stale_values.add(existing_value_id)
+            self.stale_values.add(existing_value.value)
             self.id_map_finalizer.release(existing_value.value)
 
         if stored_value is not None:
@@ -138,7 +137,7 @@ class DumboOnlineCache:
             self.persisted_cache.update(vid, stored_value)
 
     def is_stale(self, value):
-        return id(value) in self.stale_values
+        return value in self.stale_values
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         if vid is not None and vid not in self.vid_to_value:

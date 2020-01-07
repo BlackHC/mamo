@@ -1,11 +1,14 @@
 import weakref
 from typing import Dict, Iterator, TypeVar, Generic
-from typing import MutableMapping
+from typing import MutableMapping, MutableSet
 import objproxies
 
 
 KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)  # Any type covariant containers.
 
 
 def supports_weakrefs(value):
@@ -24,7 +27,19 @@ class IdMapFinalizer(Generic[KT]):
 
     def _finalizer(self, id_value, custom_handler):
         del self.id_to_finalizer[id_value]
-        custom_handler(id_value)
+        if custom_handler is not None:
+            custom_handler(id_value)
+
+    def __contains__(self, item):
+        return id(item) in self.id_to_finalizer
+
+    def __len__(self):
+        return len(self.id_to_finalizer)
+
+    def __iter__(self):
+        # TODO: add a test that shows that this is necessary to avoid deletions
+        # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
+        return iter(list(map(self.lookup_id, self.id_to_finalizer)))
 
     def lookup_id(self, id_value):
         return self.id_to_finalizer[id_value].peek()[0]
@@ -54,6 +69,29 @@ class IdMapFinalizer(Generic[KT]):
 
     def __del__(self):
         self.clear()
+
+
+# TODO: add tests
+class WeakIdSet(MutableSet[T]):
+    id_map_finalizer: IdMapFinalizer
+
+    def __init__(self):
+        self.id_map_finalizer = IdMapFinalizer()
+
+    def add(self, x: T) -> None:
+        self.id_map_finalizer.register(x, None)
+
+    def discard(self, x: T) -> None:
+        self.id_map_finalizer.release(x)
+
+    def __contains__(self, x: object) -> bool:
+        return x in self.id_map_finalizer
+
+    def __len__(self) -> int:
+        return len(self.id_map_finalizer)
+
+    def __iter__(self) -> Iterator[T_co]:
+        return iter(self.id_map_finalizer)
 
 
 class WeakKeyIdMap(MutableMapping[KT, VT]):
@@ -86,4 +124,4 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
     def __iter__(self) -> Iterator[KT]:
         # TODO: add a test that shows that this is necessary to avoid deletions
         # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
-        return iter(list(map(self.id_map_finalizer.lookup_id, self.id_map_to_value)))
+        return iter(self.id_map_finalizer)
