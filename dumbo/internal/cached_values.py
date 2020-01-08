@@ -36,7 +36,7 @@ class ExternallyCachedFilePath:
         return os.path.join(self.path, f"{self.vid_info}_{cache_info}_{self.external_id}.{ext}")
 
 
-@dataclass(unsafe_hash=True)
+@dataclass
 class ExternallyCachedValue(CachedValue, ABC):
     """A value that is cached with external resources."""
 
@@ -49,7 +49,7 @@ class ExternallyCachedValue(CachedValue, ABC):
         os.rename(self.path, unlinked_path)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass
 class DBPickledValue(CachedValue):
     """A value that is cached in the database."""
 
