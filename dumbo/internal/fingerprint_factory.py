@@ -7,7 +7,7 @@ from dumbo.internal.fingerprints import (
     FunctionFingerprint,
     DeepFunctionFingerprint,
     CallFingerprint,
-    FingerprintDigestValue,
+    FingerprintDigestRepr,
     FingerprintProvider,
     CellResultFingerprint,
     CellFingerprint,
@@ -62,7 +62,7 @@ class FingerprintFactory(FingerprintProvider):
         if value is None or isinstance(value, (bool, int, float)) or (isinstance(value, str) and len(str) <
                                                                       MAX_FINGERPRINT_VALUE_LENGTH):
             # TODO: special-case strings and summarize them?
-            return FingerprintDigestValue(value, value)
+            return FingerprintDigestRepr(value, repr(value))
 
         fingerprint = self.cache.get(value)
         if fingerprint is not None:
@@ -73,8 +73,8 @@ class FingerprintFactory(FingerprintProvider):
 
         # TODO: this is a special case of a computing a digest!?
         if isinstance(value, FunctionType):
-            fingerprint = FingerprintDigestValue(self._get_function_fingerprint(value, allow_deep=False),
-                                                 reflection.get_func_qualified_name(value))
+            fingerprint = FingerprintDigestRepr(self._get_function_fingerprint(value, allow_deep=False),
+                                                reflection.get_func_qualified_name(value))
         else:
             object_saver = MODULE_EXTENSIONS.get_object_saver(value)
             if object_saver is not None:

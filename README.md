@@ -431,4 +431,6 @@ PersistedCache just holds values. We can rewrap values that are being passed to 
 
 I think I need to separate external values and tags and move these out of OnlineCache.
 
-* [ ] rewrap values that get passed to PersistedCache
+* [x] store pickled values instead of pure values
+* [x] get rid of FingerpringDigestValue for a bit
+* [ ] create a class that connects vids<->values and fingerprints weakly

@@ -20,12 +20,12 @@ class FingerprintName(Fingerprint):
 
 
 @dataclass(frozen=True)
-class FingerprintDigestValue(FingerprintDigest):
+class FingerprintDigestRepr(FingerprintDigest):
     """`FingerprintDigest` that carries its original value to be more informative.
 
     For all purposes, we ignore the actual value for hashing and use the provided digest."""
 
-    value: object
+    value: str
 
     def __eq__(self, other):
         return super().__eq__(other)
