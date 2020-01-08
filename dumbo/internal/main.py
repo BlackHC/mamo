@@ -8,14 +8,12 @@ from dumbo.internal.fingerprints import FingerprintProvider, Fingerprint, CellRe
 from dumbo.internal.identities import (
     FunctionIdentity,
     ValueIdentity,
-    AnnotatedResult,
-    AnnotatedValue,
     IdentityProvider,
     value_name_identity,
     ComputedValueIdentity,
     ValueCallIdentity,
-    ValueCellResultIdentity,
-)
+    ValueCellResultIdentity)
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.online_cache import DumboOnlineCache
@@ -95,8 +93,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def deep_fingerprint_source_prefix(self, value):
         self.fingerprint_factory.deep_fingerprint_source_prefix = value
 
-    def _get_stored_value(self, vid):
-        return self.online_cache.get_stored_value(vid)
+    def _get_value(self, vid):
+        return self.online_cache.get_value(vid)
 
     def _get_vid(self, value):
         return self.online_cache.get_vid(value)
@@ -105,7 +103,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         # TODO: add tests
         # TODO: don't leak internal objects (convert to dicts or similar instead?)
         if not persisted:
-            return self.online_cache.get_vids()
+            return set(self.online_cache.get_vids())
 
         vids = set()
         vids.update(self.persisted_cache.get_cached_vids())
@@ -207,16 +205,16 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             if dumbo._shall_execute(vid, call_fingerprint):
                 result = func(*args, **kwargs)
                 wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.online_cache.update(vid, AnnotatedResult(wrapped_result, call_fingerprint))
+                dumbo.online_cache.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
 
                 return wrapped_result
 
-            cached_result = dumbo._get_stored_value(vid)
+            cached_result = dumbo._get_value(vid)
             if cached_result is None:
                 # log?
                 raise RuntimeError(f"Couldn't find cached result for {vid}!")
 
-            return cached_result.value
+            return cached_result
 
         wrapped_func.dumbo_unwrapped_func = func
         wrapped_func.is_stale = lambda *args, **kwargs: dumbo.is_stale_call(func, args, kwargs)
@@ -260,17 +258,16 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.online_cache.update(result_vids[name], AnnotatedResult(user_ns[name], result_fingerprints[name]))
+                dumbo.online_cache.update(result_vids[name], AnnotatedValue(user_ns[name], result_fingerprints[name]))
         else:
             for name in outputs:
                 vid = result_vids[name]
-                cached_result = dumbo._get_stored_value(vid)
+                cached_result = dumbo._get_value(vid)
                 if cached_result is None:
                     # log?
                     raise RuntimeError(f"Couldn't find cached result for {vid}!")
 
-                assert isinstance(cached_result, AnnotatedResult)
-                user_ns[name] = cached_result.value
+                user_ns[name] = cached_result
 
     def register_external_value(self, unique_name, value):
         # TODO: add an error here if value already exists within the cache.
@@ -292,16 +289,12 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             self.online_cache.tag(tag_name, None)
 
     def get_tag_value(self, tag_name):
-        stored_value = self.online_cache.get_tag_stored_value(tag_name)
-        if stored_value is None:
-            return None
-        return stored_value.value
+        stored_value = self.online_cache.get_tag_value(tag_name)
+        return stored_value
 
     def get_external_value(self, unique_name):
-        stored_value = self._get_stored_value(value_name_identity(unique_name))
-        if stored_value is None:
-            return None
-        return stored_value.value
+        stored_value = self._get_value(value_name_identity(unique_name))
+        return stored_value
 
     def testing_close(self):
         self.persisted_cache.testing_close()

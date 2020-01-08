@@ -5,7 +5,8 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.identities import AnnotatedResult, ComputedValueIdentity
+from dumbo.internal.identities import ComputedValueIdentity
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.bimap import PersistentBimap
 
 from transaction import TransactionManager
@@ -17,6 +18,10 @@ import os
 import pickle
 
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
+
+import dataclasses
+
+from dumbo.internal.weakref_utils import ObjectProxy
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
@@ -100,8 +105,8 @@ class DumboPersistedCache:
         return self.storage.get_new_external_id()
 
     def try_create_cached_value(
-        self, vid: ComputedValueIdentity, stored_result: AnnotatedResult
-    ) -> Optional[AnnotatedResult[CachedValue]]:
+        self, vid: ComputedValueIdentity, stored_result: AnnotatedValue
+    ) -> Optional[AnnotatedValue[CachedValue]]:
         object_saver = MODULE_EXTENSIONS.get_object_saver(stored_result.value)
         if object_saver is None:
             # TODO: log?
@@ -125,9 +130,9 @@ class DumboPersistedCache:
             # TODO: log?
             return None
 
-        return AnnotatedResult(cached_value, stored_result.fingerprint)
+        return AnnotatedValue(cached_value, stored_result.fingerprint)
 
-    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedResult]):
+    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedValue]):
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
             if existing_cached_value is not None:
@@ -144,6 +149,12 @@ class DumboPersistedCache:
                 # TODO: logic to decide whether to store the value at all or not depending
                 # on computational budget.
 
+                # TODO: this is currently holding object proxies sometimes
+                # Which makes weakref collection hard!
+                # # TODO: ugly: need to unwrap object proxy, fix this!
+                # assert isinstance(value.value, ObjectProxy)
+                # value = dataclasses.replace(value, value=value.value.__subject__)
+
                 cached_value = self.try_create_cached_value(vid, value)
                 if cached_value is not None:
                     self.storage.vid_to_cached_value[vid] = cached_value
@@ -154,10 +165,10 @@ class DumboPersistedCache:
     def get_cached_vids(self):
         return self.storage.vid_to_cached_value.keys()
 
-    def get_cached_value(self, vid) -> Optional[AnnotatedResult[CachedValue]]:
+    def get_cached_value(self, vid) -> Optional[AnnotatedValue[CachedValue]]:
         return self.storage.vid_to_cached_value.get(vid)
 
-    def get_stored_result(self, vid) -> Optional[AnnotatedResult]:
+    def get_stored_result(self, vid) -> Optional[AnnotatedValue]:
         cached_value = self.get_cached_value(vid)
         if cached_value is None:
             return None
@@ -165,7 +176,8 @@ class DumboPersistedCache:
         # Load value
         loaded_value = cached_value.value.load()
         wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
-        return AnnotatedResult(wrapped_value, cached_value.fingerprint)
+
+        return AnnotatedValue(wrapped_value, cached_value.fingerprint)
 
     def tag(self, tag_name: str, vid: Optional[ComputedValueIdentity]):
         if vid is not None and vid not in self.storage.vid_to_cached_value:

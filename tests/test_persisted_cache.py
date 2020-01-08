@@ -1,6 +1,7 @@
 from os import mkdir, listdir, path
 
-from dumbo.internal.identities import value_name_identity, AnnotatedResult
+from dumbo.internal.identities import value_name_identity
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.persisted_cache import DumboPersistedCache
 
 from . import testing
@@ -12,7 +13,7 @@ def test_persisted_cache_memory_only():
     cache = DumboPersistedCache.from_memory()
 
     vid = value_name_identity("test")
-    value = AnnotatedResult(testing.BoxedValue(1), vid.fingerprint)
+    value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
 
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
@@ -23,7 +24,7 @@ def test_persisted_cache_update_none_works():
     cache = DumboPersistedCache.from_memory()
 
     vid = value_name_identity("test")
-    value = AnnotatedResult(testing.BoxedValue(1), vid.fingerprint)
+    value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
 
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
@@ -36,7 +37,7 @@ def test_persisted_cache_get_vids_works():
     cache = DumboPersistedCache.from_memory()
 
     vid = value_name_identity("test")
-    value = AnnotatedResult(testing.BoxedValue(1), vid.fingerprint)
+    value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
 
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
@@ -51,7 +52,7 @@ def test_persisted_cache_persists():
         cache = DumboPersistedCache.from_file(db_path)
 
         vid = value_name_identity("test")
-        value = AnnotatedResult(testing.BoxedValue(1), vid.fingerprint)
+        value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
         tag_name = "duck"
 
         assert cache.get_cached_value(vid) is None
@@ -81,7 +82,7 @@ def test_persisted_cache_persists_different_paths():
         cache = DumboPersistedCache.from_file(db_path, external_path)
 
         vid = value_name_identity("test")
-        value = AnnotatedResult(list(range(100000)), vid.fingerprint)
+        value = AnnotatedValue(list(range(100000)), vid.fingerprint)
         tag_name = "duck"
 
         assert cache.get_cached_value(vid) is None

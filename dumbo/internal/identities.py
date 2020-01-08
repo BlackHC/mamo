@@ -1,11 +1,9 @@
 from abc import ABC
 from dataclasses import dataclass
 from types import FunctionType
-from typing import Tuple, FrozenSet, Generic, TypeVar
+from typing import Tuple, FrozenSet
 
-from dumbo.internal.fingerprints import Fingerprint, ResultFingerprint, FingerprintName
-
-T = TypeVar("T")
+from dumbo.internal.fingerprints import Fingerprint, FingerprintName
 
 
 class ValueIdentity:
@@ -74,18 +72,6 @@ class ValueCellResultIdentity(ComputedValueIdentity):
 
     def get_external_info(self):
         return f"cell_{self.cell.name}.{self.key}"
-
-
-@dataclass
-class AnnotatedValue(Generic[T]):
-    value: T
-    fingerprint: Fingerprint
-
-
-# This is kept by online and persistent cache and might later include more debug info.
-@dataclass
-class AnnotatedResult(AnnotatedValue[T]):
-    fingerprint: ResultFingerprint
 
 
 class IdentityProvider:

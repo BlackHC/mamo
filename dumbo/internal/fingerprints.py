@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import Tuple, FrozenSet, Optional
 
 
+MAX_FINGERPRINT_VALUE_LENGTH = 1024
+
+
 class Fingerprint:
     pass
 

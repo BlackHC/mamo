@@ -6,6 +6,8 @@ import objproxies
 
 KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
+KT_co = TypeVar('KT_co', covariant=True)  # Value type covariant containers.
+VT_co = TypeVar('VT_co', covariant=True)  # Value type covariant containers.
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)  # Any type covariant containers.
@@ -115,13 +117,41 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         del self.id_map_to_value[id(k)]
         self.id_map_finalizer.release(k)
 
-    def __getitem__(self, k: KT) -> VT:
+    def __getitem__(self, k: KT) -> VT_co:
         return self.id_map_to_value[id(k)]
 
     def __len__(self) -> int:
         return len(self.id_map_to_value)
 
-    def __iter__(self) -> Iterator[KT]:
+    def __iter__(self) -> Iterator[KT_co]:
         # TODO: add a test that shows that this is necessary to avoid deletions
         # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
         return iter(self.id_map_finalizer)
+
+
+class WrappedValueMutableMapping(MutableMapping[KT, VT], Generic[KT, VT, T]):
+    data: Dict[KT, T]
+
+    def __init__(self):
+        self.data = {}
+
+    def _value_to_store(self, v: VT) -> T:
+        raise NotImplementedError()
+
+    def _store_to_value(self, v: T) -> VT_co:
+        raise NotImplementedError()
+
+    def __setitem__(self, k: KT, v: VT) -> None:
+        self.data[k] = self._value_to_store(v)
+
+    def __delitem__(self, v: KT) -> None:
+        del self.data[v]
+
+    def __getitem__(self, k: KT) -> VT_co:
+        return self._store_to_value(self.data[k])
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterator[KT_co]:
+        return iter(self.data)

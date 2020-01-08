@@ -1,10 +1,13 @@
 import dumbo.internal.persisted_cache
 import pytest
 
-from dumbo.internal.identities import value_name_identity, AnnotatedValue, ValueCallIdentity, AnnotatedResult
+from dumbo.internal.identities import value_name_identity, ValueCallIdentity
+from dumbo.internal.annotated_value import AnnotatedValue, AnnotatedValue
 from dumbo.internal.online_cache import DumboOnlineCache
 
 from .testing import DummyPersistedCache, BoxedValue
+
+# TODO: gotta check fingerprints, too!
 
 
 def test_doc_initial_update_works():
@@ -17,7 +20,7 @@ def test_doc_initial_update_works():
     value = AnnotatedValue(BoxedValue(5), vid.fingerprint)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_value(vid) is value
+    assert online_cache.get_value(vid) is value.value
     assert online_cache.get_vid(value.value) == vid
 
 
@@ -29,13 +32,13 @@ def test_doc_updating_value_works():
     value1 = AnnotatedValue(BoxedValue(5), vid.fingerprint)
     online_cache.update(vid, value1)
 
-    assert online_cache.get_stored_value(vid) is value1
+    assert online_cache.get_value(vid) is value1.value
     assert online_cache.get_vid(value1.value) == vid
 
     value2 = AnnotatedValue(BoxedValue(7), vid.fingerprint)
 
     online_cache.update(vid, value2)
-    assert online_cache.get_stored_value(vid) is value2
+    assert online_cache.get_value(vid) is value2.value
     assert online_cache.get_vid(value2.value) == vid
     assert online_cache.get_vid(value1.value) is None
 
@@ -50,7 +53,7 @@ def test_doc_updating_same_value_throws():
     value = AnnotatedValue(BoxedValue(5), vid.fingerprint)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_value(vid) is value
+    assert online_cache.get_value(vid) is value.value
     assert online_cache.get_vid(value.value) == vid
 
     vid2 = value_name_identity("test2")
@@ -66,12 +69,12 @@ def test_doc_updating_none_works():
     value = AnnotatedValue(BoxedValue(5), vid.fingerprint)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_value(vid) is value
+    assert online_cache.get_value(vid) is value.value
     assert online_cache.get_vid(value.value) == vid
 
     online_cache.update(vid, None)
 
-    assert online_cache.get_stored_value(vid) is None
+    assert online_cache.get_value(vid) is None
     assert online_cache.get_vid(value.value) is None
 
 
@@ -80,15 +83,15 @@ def test_doc_updating_none_works_cid():
     online_cache = DumboOnlineCache(persisted_cache)
 
     vid = ValueCallIdentity(None, None, None)
-    value = AnnotatedResult(BoxedValue(5), None)
+    value = AnnotatedValue(BoxedValue(5), None)
     online_cache.update(vid, value)
 
-    assert online_cache.get_stored_value(vid) is value
+    assert online_cache.get_value(vid) is value.value
     assert online_cache.get_vid(value.value) == vid
 
     online_cache.update(vid, None)
 
-    assert online_cache.get_stored_value(vid) is None
+    assert online_cache.get_value(vid) is None
     assert online_cache.get_vid(value.value) is None
 
 
@@ -103,9 +106,9 @@ def test_doc_tagging_works():
     online_cache.update(vid, value)
     online_cache.tag(tag_name, vid)
 
-    assert online_cache.get_stored_value(vid) is value
+    assert online_cache.get_value(vid) is value.value
     assert online_cache.get_vid(value.value) == vid
-    assert online_cache.get_tag_stored_value(tag_name) is value
+    assert online_cache.get_tag_value(tag_name) is value.value
 
 
 def test_doc_get_vids_works():

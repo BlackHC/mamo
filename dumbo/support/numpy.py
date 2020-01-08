@@ -6,7 +6,6 @@ import hashlib
 from dumbo.api_support import (
     DBCachedValue,
     ExternallyCachedValue,
-    MAX_FINGERPRINT_LENGTH,
     ModuleExtension,
     ObjectSaver,
     ExternallyCachedFilePath,

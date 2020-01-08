@@ -402,3 +402,13 @@ Also, we cannot necessarily reexecute all calls because we might not store all v
 
 I don't understand the structure of this. OnlineCache contains the cache. get_fingerprint_vid doesn't need to be a part of it.
 And fingerprint_computable_value doesn't have to be a part of fingerprint_registry?
+
+## Weak OnlineCache
+
+Do we want to keep Vid -> Fingerprint without keeping the value?
+We can get those from PersistedOnlineCache. No need to keep a second layer!
+However, the problem being PersistedOnlineCache does not store external values!
+
+We could get rid of most of DumboOnlineCache entirely if we stored VIDs and Fingerprints in ObjProxies :shrug:
+(The only exception would be special-cased external objects.)
+However, that removes the idea of DumboOnlineCache as an intermediate caching layer :-/

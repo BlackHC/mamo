@@ -2,14 +2,11 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
 from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue
-from dumbo.internal.fingerprints import FingerprintDigest, FingerprintDigestValue
+from dumbo.internal.fingerprints import FingerprintDigest, FingerprintDigestValue, MAX_FINGERPRINT_VALUE_LENGTH
 from dumbo.internal.reflection import get_module_name
 
 
 T = TypeVar("T")
-
-
-MAX_FINGERPRINT_LENGTH = 1024
 
 MISSING_DIGEST = object()
 
@@ -41,7 +38,7 @@ class ObjectSaver:
             return None
 
         estimated_size = self.get_estimated_size()
-        if estimated_size is not None and estimated_size <= MAX_FINGERPRINT_LENGTH:
+        if estimated_size is not None and estimated_size <= MAX_FINGERPRINT_VALUE_LENGTH:
             return FingerprintDigestValue(digest, self.value)
         return FingerprintDigest(digest)
 

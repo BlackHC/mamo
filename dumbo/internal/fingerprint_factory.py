@@ -9,10 +9,9 @@ from dumbo.internal.fingerprints import (
     CallFingerprint,
     FingerprintDigestValue,
     FingerprintProvider,
-    FingerprintDigest,
     CellResultFingerprint,
     CellFingerprint,
-)
+    Fingerprint, MAX_FINGERPRINT_VALUE_LENGTH)
 from dumbo.internal.identities import (
     IdentityProvider,
     ValueFingerprintIdentity,
@@ -34,7 +33,7 @@ class FingerprintFactory(FingerprintProvider):
     online_cache: DumboOnlineCache
     identity_provider: IdentityProvider
 
-    cache: WeakKeyIdMap[Any, FingerprintDigest]
+    cache: WeakKeyIdMap[Any, Fingerprint]
 
     # actually a WeakKeyDictionary!
     code_object_deps: MutableMapping[CodeType, FunctionDependencies]
@@ -60,30 +59,23 @@ class FingerprintFactory(FingerprintProvider):
 
     def fingerprint_value(self, value):
         # TODO: do I want to store strings like that?
-        if value is None or isinstance(value, (bool, int, float, str)):
+        if value is None or isinstance(value, (bool, int, float)) or (isinstance(value, str) and len(str) <
+                                                                      MAX_FINGERPRINT_VALUE_LENGTH):
+            # TODO: special-case strings and summarize them?
             return FingerprintDigestValue(value, value)
 
-        fingerprint = None
+        fingerprint = self.cache.get(value)
+        if fingerprint is not None:
+            fingerprint = self.online_cache.fingerprint_value(value)
 
+        if fingerprint is not None:
+            return fingerprint
+
+        # TODO: this is a special case of a computing a digest!?
         if isinstance(value, FunctionType):
             fingerprint = FingerprintDigestValue(self._get_function_fingerprint(value, allow_deep=False),
-                                            reflection.get_func_qualified_name(value))
+                                                 reflection.get_func_qualified_name(value))
         else:
-            vid = self.online_cache.get_vid(value)
-            if vid is not None:
-                if isinstance(vid, ValueFingerprintIdentity):
-                    fingerprint = vid.fingerprint
-                else:
-                    fingerprint = self.online_cache.get_stored_fingerprint(vid)
-
-            # Don't try to cache values that are part of online_cache.
-            if fingerprint is not None:
-                return fingerprint
-
-        if fingerprint is None:
-            fingerprint = self.cache.get(value)
-
-        if fingerprint is None:
             object_saver = MODULE_EXTENSIONS.get_object_saver(value)
             if object_saver is not None:
                 fingerprint = object_saver.compute_fingerprint()
