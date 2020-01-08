@@ -1,9 +1,9 @@
 from dumbo.internal.fingerprints import Fingerprint, FingerprintProvider
 from dumbo.internal.weakref_utils import IdMapFinalizer, WeakIdSet, WrappedValueMutableMapping, supports_weakrefs
-from dumbo.internal.identities import ValueCallIdentity, ValueIdentity, ComputedValueIdentity, ValueFingerprintIdentity
-from dumbo.internal.annotated_value import AnnotatedValue, AnnotatedValue
+from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.persisted_cache import DumboPersistedCache
-from typing import Dict, Optional, Any, MutableMapping, Union
+from typing import Dict, Optional, Any, Union
 import weakref
 from dumbo.internal.bimap import DictBimap
 

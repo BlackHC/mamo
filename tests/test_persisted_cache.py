@@ -17,7 +17,7 @@ def test_persisted_cache_memory_only():
 
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
-    assert cache.get_cached_value(vid).value.cached_value is value.value
+    assert cache.get_cached_value(vid).value.load() == value.value
 
 
 def test_persisted_cache_update_none_works():
@@ -28,7 +28,7 @@ def test_persisted_cache_update_none_works():
 
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
-    assert cache.get_cached_value(vid).value.cached_value is value.value
+    assert cache.get_cached_value(vid).value.load() == value.value
     cache.update(vid, None)
     assert cache.get_cached_value(vid) is None
 
@@ -61,13 +61,13 @@ def test_persisted_cache_persists():
         cache.update(vid, value)
         cache.tag(tag_name, vid)
 
-        assert cache.get_cached_value(vid).value.cached_value is value.value
+        assert cache.get_cached_value(vid).value.load() == value.value
         assert cache.get_tag_vid(tag_name) is vid
 
         cache.testing_close()
 
         cache = DumboPersistedCache.from_file(db_path)
-        assert cache.get_cached_value(vid).value.cached_value == value.value
+        assert cache.get_cached_value(vid).value.load() == value.value
         assert cache.get_tag_vid(tag_name) == vid
 
         cache.testing_close()

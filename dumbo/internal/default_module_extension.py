@@ -5,7 +5,7 @@ from dumbo.internal.weakref_utils import ObjectProxy
 
 from typing import Optional, Tuple
 
-from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, DBCachedValue
+from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, DBPickledValue
 from dumbo.internal.module_extension import ModuleExtension, ObjectSaver
 
 import hashlib
@@ -47,7 +47,7 @@ class DefaultObjectSaver(ObjectSaver):
             return ExternallyCachedValue(external_path)
 
         # TODO: catch transactions error for objects that cannot be pickled here?
-        return DBCachedValue(self.value)
+        return DBPickledValue(self.value)
 
 
 class DefaultTupleObjectSaver(ObjectSaver):
@@ -76,14 +76,6 @@ class DefaultTupleObjectSaver(ObjectSaver):
 class DefaultModuleExtension(ModuleExtension):
     def supports(self, value):
         return True
-
-    def try_pickle(self, value):
-        try:
-            return pickle.dumps(value)
-        except pickle.PicklingError as err:
-            # TODO: log err
-            print(err)
-            return None
 
     def get_object_saver(self, value) -> Optional[ObjectSaver]:
         if isinstance(value, tuple):

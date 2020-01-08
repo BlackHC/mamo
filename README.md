@@ -412,3 +412,23 @@ However, the problem being PersistedOnlineCache does not store external values!
 We could get rid of most of DumboOnlineCache entirely if we stored VIDs and Fingerprints in ObjProxies :shrug:
 (The only exception would be special-cased external objects.)
 However, that removes the idea of DumboOnlineCache as an intermediate caching layer :-/
+
+So one can separate:
+A FingerprintFactory for ComputedValues and a registry that connects vids and values,
+and an online cache on top of the persisted cache
+
+# FingerprintDigest
+
+FingerprintDigestValue might create cycles that keep objects alive.
+We need to duplicate the values to break cycles.
+
+Or we can create a WeakBimap?
+
+## What do we store in PersistentCache vs OnlineCache?
+
+OnlineCache holds a mapping from vid <-> wrapped values
+PersistedCache just holds values. We can rewrap values that are being passed to PersistedCache to make sure that there are no shared references.
+
+I think I need to separate external values and tags and move these out of OnlineCache.
+
+* [ ] rewrap values that get passed to PersistedCache

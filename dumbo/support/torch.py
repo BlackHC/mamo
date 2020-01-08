@@ -4,7 +4,7 @@ from typing import Optional
 import hashlib
 
 from dumbo.api_support import (
-    DBCachedValue,
+    DBPickledValue,
     ExternallyCachedValue,
     ModuleExtension,
     ObjectSaver,
@@ -35,7 +35,7 @@ class TorchObjectSaver(ObjectSaver):
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         if external_path_builder is None:
-            return DBCachedValue(self.value)
+            return DBPickledValue(self.value)
 
         shape_info = "_".join(map(str, self.value.shape))
         external_path = external_path_builder.build(shape_info, "pth")

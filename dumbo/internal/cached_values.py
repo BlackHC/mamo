@@ -1,4 +1,5 @@
 import os
+import pickle
 from abc import ABC
 from dataclasses import dataclass, replace
 from typing import Optional
@@ -49,10 +50,31 @@ class ExternallyCachedValue(CachedValue, ABC):
 
 
 @dataclass(unsafe_hash=True)
-class DBCachedValue(CachedValue, ABC):
+class DBPickledValue(CachedValue):
     """A value that is cached in the database."""
 
-    cached_value: object
+    data: bytes
+
+    def __init__(self, value):
+        self.data = try_pickle(value)
 
     def load(self):
-        return self.cached_value
+        return try_unpickle(self.data)
+
+
+def try_pickle(value):
+    try:
+        return pickle.dumps(value)
+    except pickle.PickleError as err:
+        # TODO: log err
+        print(err)
+        return None
+
+
+def try_unpickle(data: bytes):
+    try:
+        return pickle.loads(data)
+    except pickle.PickleError as err:
+        # TODO: log err
+        print(err)
+        return None
