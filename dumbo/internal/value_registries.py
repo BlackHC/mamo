@@ -4,7 +4,7 @@ from typing import MutableMapping, Set
 
 from dumbo.internal.bimap import MappingBimap
 from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.id_set import KeyIdMap
+from dumbo.internal.common.key_id_set import KeyIdMap
 from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
 from dumbo.internal.providers import ValueProvider
 from dumbo.internal.staleness_registry import StalenessRegistry

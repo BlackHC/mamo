@@ -2,7 +2,7 @@ from os import mkdir, listdir, path
 
 from dumbo.internal.identities import value_name_identity
 from dumbo.internal.annotated_value import AnnotatedValue
-from dumbo.internal.persisted_cache import DumboPersistedCache
+from dumbo.internal.persisted_store import PersistedStore
 
 from . import testing
 
@@ -10,7 +10,7 @@ import tempfile
 
 
 def test_persisted_cache_memory_only():
-    cache = DumboPersistedCache.from_memory()
+    cache = PersistedStore.from_memory()
 
     vid = value_name_identity("test")
     value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
@@ -21,7 +21,7 @@ def test_persisted_cache_memory_only():
 
 
 def test_persisted_cache_update_none_works():
-    cache = DumboPersistedCache.from_memory()
+    cache = PersistedStore.from_memory()
 
     vid = value_name_identity("test")
     value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
@@ -34,7 +34,7 @@ def test_persisted_cache_update_none_works():
 
 
 def test_persisted_cache_get_vids_works():
-    cache = DumboPersistedCache.from_memory()
+    cache = PersistedStore.from_memory()
 
     vid = value_name_identity("test")
     value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
@@ -49,7 +49,7 @@ def test_persisted_cache_persists():
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir
 
-        cache = DumboPersistedCache.from_file(db_path)
+        cache = PersistedStore.from_file(db_path)
 
         vid = value_name_identity("test")
         value = AnnotatedValue(testing.BoxedValue(1), vid.fingerprint)
@@ -66,7 +66,7 @@ def test_persisted_cache_persists():
 
         cache.testing_close()
 
-        cache = DumboPersistedCache.from_file(db_path)
+        cache = PersistedStore.from_file(db_path)
         assert cache.get_cached_value(vid).value.load() == value.value
         assert cache.get_tag_vid(tag_name) == vid
 
@@ -79,7 +79,7 @@ def test_persisted_cache_persists_different_paths():
         external_path = path.join(temp_storage_dir, "ext")
         mkdir(external_path)
 
-        cache = DumboPersistedCache.from_file(db_path, external_path)
+        cache = PersistedStore.from_file(db_path, external_path)
 
         vid = value_name_identity("test")
         value = AnnotatedValue(list(range(100000)), vid.fingerprint)

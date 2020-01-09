@@ -4,18 +4,19 @@ from typing import Optional
 from _pytest.fixtures import fixture
 
 import dumbo
-from dumbo.internal import persisted_cache, main
+from dumbo.internal import persisted_store, main
 from dumbo.internal.cached_values import DBPickledValue
 from dumbo.internal.identities import ValueIdentity
 from dumbo.internal.annotated_value import AnnotatedValue
 
 
 @dataclass
-class DummyPersistedCache(persisted_cache.DumboPersistedCache):
+class DummyPersistedStore(persisted_store.PersistedStore):
     external_cache_id: int
     vid_to_cached_value: dict
     tag_to_vid: dict
 
+    # noinspection PyMissingConstructor
     def __init__(self):
         self.external_cache_id = 0
         self.vid_to_cached_value = {}

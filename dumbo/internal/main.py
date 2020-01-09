@@ -15,11 +15,11 @@ from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.function_registry import FunctionRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.online_cache import OnlineLayer
+from dumbo.internal.result_registry import ResultRegistry
 from dumbo.internal.value_provider_mediator import ValueProviderMediator
 from dumbo.internal.value_registries import ValueRegistry
 from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.persisted_cache import DumboPersistedCache
+from dumbo.internal.persisted_store import PersistedStore
 
 from dumbo.internal import default_module_extension
 
@@ -64,21 +64,21 @@ class Dumbo:
 
     value_provider_mediator: ValueProviderMediator
     external_value_registry: ValueRegistry
-    result_registry: OnlineLayer
+    result_registry: ResultRegistry
 
-    persisted_cache: DumboPersistedCache
+    persisted_store: PersistedStore
 
     re_execution_policy: ReExecutionPolicy
 
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
-        self.persisted_cache = persisted_cache
+        self.persisted_store = persisted_cache
 
         self.value_provider_mediator = ValueProviderMediator()
 
         self.staleness_registry = StalenessRegistry()
         self.external_value_registry = ValueRegistry(self.staleness_registry)
-        self.result_registry = OnlineLayer(self.staleness_registry, persisted_cache)
+        self.result_registry = ResultRegistry(self.staleness_registry, persisted_cache)
 
         self.function_registry = FunctionRegistry()
         self.fingerprint_registry = FingerprintRegistry(deep_fingerprint_source_prefix, self.value_provider_mediator,
@@ -110,7 +110,7 @@ class Dumbo:
         # TODO: optimize to always create a new set?
         vids = self.value_provider_mediator.get_vids()
         if persisted:
-            vids.update(self.persisted_cache.get_vids())
+            vids.update(self.persisted_store.get_vids())
         return vids
 
     def flush_cache(self):
@@ -283,11 +283,11 @@ class Dumbo:
             if vid is None:
                 raise ValueError("Value has not been registered previously!")
 
-        self.persisted_cache.tag(tag_name, vid)
+        self.persisted_store.tag(tag_name, vid)
 
     def get_tag_value(self, tag_name):
         # TODO: might have to expose has_tag etc?
-        vid = self.persisted_cache.get_tag_vid(tag_name)
+        vid = self.persisted_store.get_tag_vid(tag_name)
         if vid is None:
             # TODO: log instead
             # raise ValueError(f"{tag_name} has not been registered previously!")
@@ -311,7 +311,7 @@ class Dumbo:
         return self.value_provider_mediator.resolve_value(vid)
 
     def testing_close(self):
-        self.persisted_cache.testing_close()
+        self.persisted_store.testing_close()
         self.identity_registry = None
         self.fingerprint_registry = None
         self.value_provider_mediator = None
@@ -334,8 +334,8 @@ def init_dumbo(
     assert dumbo is None
 
     persisted_cache = (
-        DumboPersistedCache.from_memory()
+        PersistedStore.from_memory()
         if memory_only
-        else DumboPersistedCache.from_file(path, externally_cached_path)
+        else PersistedStore.from_file(path, externally_cached_path)
     )
     dumbo = Dumbo(persisted_cache, deep_fingerprint_source_prefix, re_execution_policy)

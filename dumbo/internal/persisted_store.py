@@ -51,7 +51,7 @@ class DumboPersistedCacheStorage(Persistent):
 
 # TODO: to repr method
 @dataclass
-class DumboPersistedCache:
+class PersistedStore:
     storage: DumboPersistedCacheStorage
     transaction_manager: TransactionManager
     db: DB
@@ -61,7 +61,7 @@ class DumboPersistedCache:
     @staticmethod
     def from_memory():
         db = DB(None)
-        return DumboPersistedCache(db, None, None)
+        return PersistedStore(db, None, None)
 
     @staticmethod
     def from_file(path: Optional[str] = None, externally_cached_path: Optional[str] = None):
@@ -78,7 +78,7 @@ class DumboPersistedCache:
         # TODO: in general, make properties available for quering in the console/Jupyter?
 
         db = DB(FileStorage(os.path.join(path, "dumbo_persisted_cache")))
-        return DumboPersistedCache(db, path, externally_cached_path)
+        return PersistedStore(db, path, externally_cached_path)
 
     def __init__(self, db: DB, path: Optional[str], externally_cached_path: Optional[str]):
         self.db = db
