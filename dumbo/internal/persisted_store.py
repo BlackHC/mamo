@@ -1,27 +1,19 @@
+import os
+import pickle
 from dataclasses import dataclass
 from typing import Optional
 
-from persistent import Persistent
-from persistent.mapping import PersistentMapping
-
-from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.identities import ComputedValueIdentity, ValueIdentity
-from dumbo.internal.annotated_value import AnnotatedValue
-from dumbo.internal.bimap import PersistentBimap
-
-from transaction import TransactionManager
-
 from ZODB import DB
 from ZODB.FileStorage.FileStorage import FileStorage
+from persistent import Persistent
+from persistent.mapping import PersistentMapping
+from transaction import TransactionManager
 
-import os
-import pickle
-
+from dumbo.internal.annotated_value import AnnotatedValue
+from dumbo.internal.bimap import PersistentBimap
+from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
+from dumbo.internal.identities import ComputedValueIdentity, ValueIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-
-import dataclasses
-
-from dumbo.internal.weakref_utils import ObjectProxy
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 

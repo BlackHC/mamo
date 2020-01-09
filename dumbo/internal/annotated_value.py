@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-from dumbo.internal.fingerprints import Fingerprint, ResultFingerprint
-
+from dumbo.internal.fingerprints import Fingerprint
 
 T = TypeVar("T")
 

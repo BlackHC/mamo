@@ -1,8 +1,6 @@
 import dis
-import inspect
 import dis as d2
-
-from dataclasses import dataclass
+import inspect
 
 
 class A:

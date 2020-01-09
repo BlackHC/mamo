@@ -3,11 +3,10 @@ from typing import Optional
 
 from _pytest.fixtures import fixture
 
-import dumbo
 from dumbo.internal import persisted_store, main
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.cached_values import DBPickledValue
 from dumbo.internal.identities import ValueIdentity
-from dumbo.internal.annotated_value import AnnotatedValue
 
 
 @dataclass

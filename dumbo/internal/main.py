@@ -177,11 +177,10 @@ class Dumbo:
         self.value_provider_mediator.register(vid, None, None)
 
     def forget(self, value):
-        vid = self._get_vid(value)
-        if vid is None:
+        if not self.value_provider_mediator.has_value(value):
             # TODO: throw or log
             return
-        self.value_provider_mediator.register(vid, None, None)
+        self.value_provider_mediator.invalidate(value)
 
     def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
         # TODO: could directly ask persisted_cache
@@ -310,6 +309,7 @@ class Dumbo:
         vid = value_name_identity(unique_name)
         return self.value_provider_mediator.resolve_value(vid)
 
+    # noinspection PyTypeChecker
     def testing_close(self):
         self.persisted_store.testing_close()
         self.identity_registry = None

@@ -46,12 +46,6 @@ class CodeAnalyzer:
     def check_opnames(self, *opnames):
         return self.instructions[self.index].opname in opnames
 
-    def match_opnames(self, *opnames):
-        if self.instructions[self.index].opname in opnames:
-            self.index -= 1
-            return True
-        return False
-
     def nest(self):
         return CodeAnalyzer(self.instructions, self.index)
 

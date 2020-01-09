@@ -81,15 +81,6 @@ class ModuleRegistry:
         extension = self.store.get(module_name)
         return extension
 
-    def supports(self, value) -> bool:
-        extension = self.get(value)
-        value_supported = None
-        if extension is not None:
-            value_supported = extension.supports(value)
-        if value_supported is None:
-            value_supported = self.default_extension.supports(value)
-        return value_supported
-
     def get_object_saver(self, value) -> ObjectSaver:
         extension = self.get(value)
         object_saver = None

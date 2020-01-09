@@ -1,15 +1,15 @@
 import pytest
 
+from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.fingerprints import ResultFingerprint
-from dumbo.internal.identities import value_name_identity, ValueCallIdentity, FunctionIdentity, ValueIdentity
-from dumbo.internal.annotated_value import AnnotatedValue, AnnotatedValue
-from dumbo.internal.result_registry import ResultRegistry
+from dumbo.internal.identities import ValueCallIdentity, FunctionIdentity
 from dumbo.internal.providers import ValueOracle
+from dumbo.internal.result_registry import ResultRegistry
+from dumbo.internal.staleness_registry import StalenessRegistry
 from dumbo.internal.value_provider_mediator import ValueProviderMediator
 from dumbo.internal.value_registries import ValueRegistry
-from dumbo.internal.staleness_registry import StalenessRegistry
-
 from .testing import DummyPersistedStore, BoxedValue
+
 
 # TODO: gotta check fingerprints, too!
 

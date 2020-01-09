@@ -41,6 +41,7 @@ class ValueProvider(ValueOracle, ABC):
     def register(self, vid: ValueIdentity, value, fingerprint: Fingerprint) -> NoReturn:
         raise NotImplementedError()
 
+    # TODO: remove this again?
     def invalidate(self, value: object) -> NoReturn:
         raise NotImplementedError()
 
