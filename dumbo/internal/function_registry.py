@@ -2,7 +2,8 @@ from types import FunctionType
 from typing import Dict
 
 from dumbo.internal import reflection
-from dumbo.internal.identities import FunctionProvider, FunctionIdentity, CellIdentity
+from dumbo.internal.identities import FunctionIdentity, CellIdentity
+from dumbo.internal.providers import FunctionProvider
 
 
 class FunctionRegistry(FunctionProvider):

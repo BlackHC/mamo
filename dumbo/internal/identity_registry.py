@@ -1,14 +1,13 @@
 from dumbo.internal import reflection
 
-from dumbo.internal.fingerprints import FingerprintProvider
 from dumbo.internal.identities import (
     ValueFingerprintIdentity,
     ValueIdentity,
     CellIdentity,
-    IdentityProvider,
     ValueCallIdentity,
     ValueCellResultIdentity
 )
+from dumbo.internal.providers import IdentityProvider, FingerprintProvider
 
 
 class IdentityRegistry(IdentityProvider):

@@ -86,7 +86,7 @@ def test_dumbo_register_external_value(dumbo_fib_fixture):
 
     result = dumbo_fib_fixture(magic_number)
 
-    assert cast(ValueCallIdentity, main.dumbo.main_value_registry.identify_value(result)).args_vid[
+    assert cast(ValueCallIdentity, main.dumbo.value_provider_mediator.identify_value(result)).args_vid[
                0] == value_name_identity(unique_name)
 
     dumbo.register_external_value(unique_name, None)

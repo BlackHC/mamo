@@ -5,7 +5,7 @@ from dumbo.internal import reflection
 from .testing import dumbo_fixture
 
 
-# TODO: this should be a unit test of a pure FingerprintFactory!
+# TODO: this should be a unit test of a pure FingerprintRegistry!
 
 global_func = None
 

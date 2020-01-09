@@ -1,6 +1,5 @@
 from abc import ABC
 from dataclasses import dataclass
-from types import FunctionType
 from typing import Tuple, FrozenSet
 
 from dumbo.internal.fingerprints import Fingerprint, FingerprintName
@@ -72,22 +71,6 @@ class ValueCellResultIdentity(ComputedValueIdentity):
 
     def get_external_info(self):
         return f"cell_{self.cell.name}.{self.key}"
-
-
-class IdentityProvider:
-    def identify_value(self, value) -> ValueIdentity:
-        raise NotImplementedError()
-
-
-class FunctionProvider:
-    def identify_function(self, function: FunctionType) -> FunctionIdentity:
-        raise NotImplementedError()
-
-    def identify_cell(self, name: str, cell_function: FunctionType) -> CellIdentity:
-        raise NotImplementedError()
-
-    def resolve_function(self, fid: FunctionIdentity) -> FunctionType:
-        raise NotImplementedError()
 
 
 class ValueIdentityVisitor:

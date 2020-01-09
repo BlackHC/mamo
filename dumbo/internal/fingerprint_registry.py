@@ -8,13 +8,10 @@ from dumbo.internal.fingerprints import (
     DeepFunctionFingerprint,
     CallFingerprint,
     FingerprintDigestRepr,
-    FingerprintProvider,
     CellResultFingerprint,
     CellFingerprint,
     Fingerprint, MAX_FINGERPRINT_VALUE_LENGTH)
 from dumbo.internal.identities import (
-    IdentityProvider,
-    FunctionProvider,
     ValueFingerprintIdentity,
     ValueCallIdentity,
     ComputedValueIdentity,
@@ -22,7 +19,7 @@ from dumbo.internal.identities import (
     ValueCellResultIdentity,
     ValueIdentity)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.online_cache import IValueRegistry
+from dumbo.internal.providers import ValueProvider, IdentityProvider, FunctionProvider, FingerprintProvider
 from dumbo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
@@ -30,10 +27,10 @@ from dumbo.internal.reflection import FunctionDependencies
 from dumbo.internal.weakref_utils import WeakKeyIdMap
 
 
-class FingerprintFactory(FingerprintProvider):
+class FingerprintRegistry(FingerprintProvider):
     # TODO: We only need the FingerprintProvider bit of ValueProvider!
     # Once we move
-    value_provider: IValueRegistry
+    value_provider: ValueProvider
     identity_provider: IdentityProvider
     function_provider: FunctionProvider
 
@@ -48,7 +45,7 @@ class FingerprintFactory(FingerprintProvider):
     def __init__(
             self,
             deep_fingerprint_source_prefix: Optional[str],
-            value_provider: IValueRegistry,
+            value_provider: ValueProvider,
             identity_provider: IdentityProvider,
             function_provider: FunctionProvider
     ):

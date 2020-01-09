@@ -73,6 +73,3 @@ class CellResultFingerprint(ResultFingerprint):
     key: str
 
 
-class FingerprintProvider:
-    def fingerprint_value(self, value):
-        raise NotImplementedError()
