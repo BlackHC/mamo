@@ -5,7 +5,7 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.identities import ComputedValueIdentity
+from dumbo.internal.identities import ComputedValueIdentity, ValueIdentity
 from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.bimap import PersistentBimap
 
@@ -36,7 +36,7 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: PersistentMapping
-    tag_to_vid: PersistentBimap[str, ComputedValueIdentity]
+    tag_to_vid: PersistentBimap[str, ValueIdentity]
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
@@ -142,9 +142,6 @@ class DumboPersistedCache:
 
             if value is None:
                 del self.storage.vid_to_cached_value[vid]
-
-                # Also remove any existing tags.
-                self.storage.tag_to_vid.del_value(vid)
             else:
                 # TODO: logic to decide whether to store the value at all or not depending
                 # on computational budget.
@@ -162,13 +159,13 @@ class DumboPersistedCache:
                     if existing_cached_value:
                         del self.storage.vid_to_cached_value[vid]
 
-    def get_cached_vids(self):
+    def get_vids(self):
         return self.storage.vid_to_cached_value.keys()
 
-    def get_cached_value(self, vid) -> Optional[AnnotatedValue[CachedValue]]:
+    def get_cached_value(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue[CachedValue]]:
         return self.storage.vid_to_cached_value.get(vid)
 
-    def get_stored_result(self, vid) -> Optional[AnnotatedValue]:
+    def get_stored_result(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue]:
         cached_value = self.get_cached_value(vid)
         if cached_value is None:
             return None
@@ -179,15 +176,11 @@ class DumboPersistedCache:
 
         return AnnotatedValue(wrapped_value, cached_value.fingerprint)
 
-    def tag(self, tag_name: str, vid: Optional[ComputedValueIdentity]):
-        if vid is not None and vid not in self.storage.vid_to_cached_value:
-            # TODO: log?
-            return
-
+    def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         with self.transaction_manager:
             self.storage.tag_to_vid.update(tag_name, vid)
 
-    def get_tag_vid(self, tag_name) -> Optional[ComputedValueIdentity]:
+    def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
         return self.storage.tag_to_vid.get_value(tag_name)
 
     def has_vid(self, vid):

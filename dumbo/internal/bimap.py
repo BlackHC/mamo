@@ -75,7 +75,8 @@ class Bimap(Generic[KT, VT]):
     def _put_key_value(self, key: KT, value: VT):
         raise NotImplementedError()
 
-    def has_key(self, key: KT) -> bool:
+    # TODO: replace this and below by two methods: keys() and values() which both return sets!
+    def __contains__(self, key: KT) -> bool:
         raise NotImplementedError()
 
     def has_value(self, value: VT) -> bool:
@@ -84,8 +85,8 @@ class Bimap(Generic[KT, VT]):
 
 @dataclass
 class MappingBimap(Bimap[KT, VT]):
-    key_value: MutableMapping
-    value_key: MutableMapping
+    key_value: MutableMapping[KT, VT]
+    value_key: MutableMapping[VT, KT]
 
     def length(self):
         return len(self.key_value)
@@ -106,11 +107,14 @@ class MappingBimap(Bimap[KT, VT]):
         self.key_value[key] = value
         self.value_key[value] = key
 
-    def has_key(self, key):
+    def __contains__(self, key):
         return key in self.key_value
 
     def has_value(self, value):
         return value in self.value_key
+
+    def get_keys(self):
+        return self.key_value.keys()
 
 
 class DictBimap(MappingBimap[KT, VT]):

@@ -9,8 +9,8 @@ def test_bimap(bimap_factory):
 
     assert not bimap.has_value(1)
     assert not bimap.has_value(2)
-    assert not bimap.has_key(1)
-    assert not bimap.has_key(2)
+    assert not 1 in bimap
+    assert not 2 in bimap
 
     assert bimap.length() == 0
 
@@ -18,17 +18,17 @@ def test_bimap(bimap_factory):
 
     assert bimap.length() == 1
 
-    assert bimap.has_key(1)
+    assert 1 in bimap
     assert bimap.has_value(2)
 
-    assert not bimap.has_key(2)
+    assert 2 not in bimap
     assert not bimap.has_value(1)
 
     bimap.update(3, 4)
 
     assert bimap.length() == 2
 
-    assert bimap.has_key(3)
+    assert 3 in bimap
     assert bimap.has_value(4)
 
     assert bimap.get_value(1) == 2
@@ -47,14 +47,14 @@ def test_bimap(bimap_factory):
 
     assert bimap.length() == 1
 
-    assert not bimap.has_key(1)
+    assert 1 not in bimap
     assert not bimap.has_value(2)
 
     bimap.del_value(4)
 
     assert bimap.length() == 0
 
-    assert not bimap.has_key(3)
+    assert 3 not in bimap
     assert not bimap.has_value(4)
 
     bimap.update(1, None)

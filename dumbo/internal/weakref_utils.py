@@ -3,7 +3,6 @@ from typing import Dict, Iterator, TypeVar, Generic
 from typing import MutableMapping, MutableSet
 import objproxies
 
-
 KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
 KT_co = TypeVar('KT_co', covariant=True)  # Value type covariant containers.
@@ -92,7 +91,7 @@ class WeakIdSet(MutableSet[T]):
     def __len__(self) -> int:
         return len(self.id_map_finalizer)
 
-    def __iter__(self) -> Iterator[T_co]:
+    def __iter__(self) -> Iterator[T]:
         return iter(self.id_map_finalizer)
 
 
@@ -117,19 +116,19 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         del self.id_map_to_value[id(k)]
         self.id_map_finalizer.release(k)
 
-    def __getitem__(self, k: KT) -> VT_co:
+    def __getitem__(self, k: KT) -> VT:
         return self.id_map_to_value[id(k)]
 
     def __len__(self) -> int:
         return len(self.id_map_to_value)
 
-    def __iter__(self) -> Iterator[KT_co]:
+    def __iter__(self) -> Iterator[KT]:
         # TODO: add a test that shows that this is necessary to avoid deletions
         # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
         return iter(self.id_map_finalizer)
 
 
-class WrappedValueMutableMapping(MutableMapping[KT, VT], Generic[KT, VT, T]):
+class WrappedValueMutableMapping(Generic[KT, VT, T], MutableMapping[KT, VT]):
     data: Dict[KT, T]
 
     def __init__(self):
@@ -138,7 +137,7 @@ class WrappedValueMutableMapping(MutableMapping[KT, VT], Generic[KT, VT, T]):
     def _value_to_store(self, v: VT) -> T:
         raise NotImplementedError()
 
-    def _store_to_value(self, v: T) -> VT_co:
+    def _store_to_value(self, v: T) -> VT:
         raise NotImplementedError()
 
     def __setitem__(self, k: KT, v: VT) -> None:
@@ -147,11 +146,11 @@ class WrappedValueMutableMapping(MutableMapping[KT, VT], Generic[KT, VT, T]):
     def __delitem__(self, v: KT) -> None:
         del self.data[v]
 
-    def __getitem__(self, k: KT) -> VT_co:
+    def __getitem__(self, k: KT) -> VT:
         return self._store_to_value(self.data[k])
 
     def __len__(self) -> int:
         return len(self.data)
 
-    def __iter__(self) -> Iterator[KT_co]:
+    def __iter__(self) -> Iterator[KT]:
         return iter(self.data)

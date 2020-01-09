@@ -41,7 +41,7 @@ def get_external_value(unique_name):
 
 def flush_online_cache():
     _ensure_dumbo_init()
-    main.dumbo.flush_online_cache()
+    main.dumbo.flush_cache()
 
 
 def get_cached_value_identities(persisted=False):

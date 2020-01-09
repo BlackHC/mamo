@@ -48,9 +48,9 @@ def test_func_a_b_c_same():
 
 
 def test_dumbo_func_a_b_c_same(dumbo_fixture):
-    func_a_id = main.dumbo.identity_registry.identify_function(func_a)
-    func_b_id = main.dumbo.identity_registry.identify_function(func_b)
-    func_c_id = main.dumbo.identity_registry.identify_function(func_c)
+    func_a_id = main.dumbo.function_registry.identify_function(func_a)
+    func_b_id = main.dumbo.function_registry.identify_function(func_b)
+    func_c_id = main.dumbo.function_registry.identify_function(func_c)
 
     assert func_a_id == func_b_id
     assert func_b_id == func_c_id

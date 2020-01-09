@@ -42,6 +42,9 @@ def test_id_map_finalizer():
         a_has_been_finalized_counter += 1
 
     id_map_finalizer.register(a, custom_handler)
+
+    assert set(id_map_finalizer) == {a}
+
     id_map_finalizer.release(a)
 
     assert a_has_been_finalized_counter == 0

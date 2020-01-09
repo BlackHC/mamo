@@ -42,7 +42,7 @@ def test_persisted_cache_get_vids_works():
     assert cache.get_cached_value(vid) is None
     cache.update(vid, value)
 
-    assert cache.get_cached_vids() == {vid}
+    assert cache.get_vids() == {vid}
 
 
 def test_persisted_cache_persists():

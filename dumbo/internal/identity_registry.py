@@ -1,45 +1,23 @@
-from types import FunctionType
-from typing import Dict
-
 from dumbo.internal import reflection
 
 from dumbo.internal.fingerprints import FingerprintProvider
 from dumbo.internal.identities import (
     ValueFingerprintIdentity,
-    FunctionIdentity,
     ValueIdentity,
     CellIdentity,
     IdentityProvider,
     ValueCallIdentity,
-    ValueCellResultIdentity,
+    ValueCellResultIdentity
 )
-from dumbo.internal.online_cache import DumboOnlineCache
 
 
 class IdentityRegistry(IdentityProvider):
-    online_cache: DumboOnlineCache
+    value_provider: IdentityProvider
     fingerprint_provider: FingerprintProvider
 
-    fid_to_func: Dict[FunctionIdentity, FunctionType]
-
-    def __init__(self, online_cache: DumboOnlineCache, fingerprint_provider: FingerprintProvider):
-        self.online_cache = online_cache
+    def __init__(self, value_provider: IdentityProvider, fingerprint_provider: FingerprintProvider):
+        self.value_provider = value_provider
         self.fingerprint_provider = fingerprint_provider
-
-        self.fid_to_func = {}
-
-    def resolve_function(self, fid):
-        return self.fid_to_func.get(fid)
-
-    def identify_function(self, func) -> FunctionIdentity:
-        fid = FunctionIdentity(reflection.get_func_qualified_name(func))
-        self.fid_to_func[fid] = func
-        return fid
-
-    def identify_cell(self, name: str, cell_function: FunctionType) -> CellIdentity:
-        fid = CellIdentity(name)
-        self.fid_to_func[fid] = cell_function
-        return fid
 
     def identify_call(self, fid, args, kwargs) -> ValueCallIdentity:
         args_vid = tuple(self.identify_value(arg) for arg in args)
@@ -51,7 +29,7 @@ class IdentityRegistry(IdentityProvider):
         return ValueCellResultIdentity(cell_identity, key)
 
     def identify_value(self, value) -> ValueIdentity:
-        vid = self.online_cache.get_vid(value)
+        vid = self.value_provider.identify_value(value)
         if vid is not None:
             return vid
 

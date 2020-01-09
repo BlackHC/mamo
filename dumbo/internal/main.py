@@ -4,19 +4,21 @@ from typing import Optional
 from functools import wraps
 
 from dumbo.internal.fingerprint_factory import FingerprintFactory
-from dumbo.internal.fingerprints import FingerprintProvider, Fingerprint, CellResultFingerprint
+from dumbo.internal.fingerprints import FingerprintProvider, Fingerprint, CellResultFingerprint, ResultFingerprint
 from dumbo.internal.identities import (
     FunctionIdentity,
     ValueIdentity,
     IdentityProvider,
+    FunctionProvider,
     value_name_identity,
     ComputedValueIdentity,
     ValueCallIdentity,
     ValueCellResultIdentity)
 from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.identity_registry import IdentityRegistry
+from dumbo.internal.function_registry import FunctionRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.online_cache import DumboOnlineCache
+from dumbo.internal.online_cache import OnlineLayer, StalenessRegistry, ValueRegistry, MainValueRegistry
 from dumbo.internal.persisted_cache import DumboPersistedCache
 
 from dumbo.internal import default_module_extension
@@ -30,8 +32,8 @@ class ReExecutionPolicy:
             self,
             dumbo: "Dumbo",
             vid: ComputedValueIdentity,
-            fingerprint: Fingerprint,
-            stored_fingerprint: Optional[Fingerprint],
+            fingerprint: ResultFingerprint,
+            stored_fingerprint: Optional[ResultFingerprint],
     ):
         return True
 
@@ -44,8 +46,8 @@ def execute_decision_only_missing(
 
 def execute_decision_stale(max_depth):
     def decider(
-            dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint,
-            stored_fingerprint: Optional[Fingerprint]
+            dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: ResultFingerprint,
+            stored_fingerprint: Optional[ResultFingerprint]
     ):
         if fingerprint != stored_fingerprint:
             return True
@@ -57,8 +59,13 @@ def execute_decision_stale(max_depth):
 class Dumbo(IdentityProvider, FingerprintProvider):
     fingerprint_factory: FingerprintFactory
 
+    staleness_registry: StalenessRegistry
     identity_registry: IdentityRegistry
-    online_cache: DumboOnlineCache
+    function_registry: FunctionRegistry
+
+    main_value_registry: MainValueRegistry
+    external_values: ValueRegistry
+    online_layer: OnlineLayer
 
     persisted_cache: DumboPersistedCache
 
@@ -67,10 +74,15 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
         self.persisted_cache = persisted_cache
-        self.online_cache = DumboOnlineCache(persisted_cache)
+        self.staleness_registry = StalenessRegistry()
 
-        self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix, self.online_cache, self)
-        self.identity_registry = IdentityRegistry(self.online_cache, self)
+        self.external_values = ValueRegistry(self.staleness_registry)
+        self.online_layer = OnlineLayer(self.staleness_registry, persisted_cache)
+        self.main_value_registry = MainValueRegistry(self.online_layer, self.external_values)
+
+        self.function_registry = FunctionRegistry()
+        self.fingerprint_factory = FingerprintFactory(deep_fingerprint_source_prefix, self.main_value_registry, self, self.function_registry)
+        self.identity_registry = IdentityRegistry(self.main_value_registry, self)
 
         self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
 
@@ -79,9 +91,6 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     def fingerprint_value(self, value):
         return self.fingerprint_factory.fingerprint_value(value)
-
-    def resolve_function(self, fid: FunctionIdentity):
-        return self.identity_registry.resolve_function(fid)
 
     @property
     def deep_fingerprint_source_prefix(self):
@@ -93,35 +102,32 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def deep_fingerprint_source_prefix(self, value):
         self.fingerprint_factory.deep_fingerprint_source_prefix = value
 
-    def _get_value(self, vid):
-        return self.online_cache.get_value(vid)
+    def _get_value(self, vid: ValueIdentity):
+        return self.main_value_registry.resolve_value(vid)
 
-    def _get_vid(self, value):
-        return self.online_cache.get_vid(value)
+    def _get_vid(self, value: object):
+        return self.main_value_registry.identify_value(value)
 
     def get_value_identities(self, persisted=False):
-        # TODO: add tests
-        # TODO: don't leak internal objects (convert to dicts or similar instead?)
-        if not persisted:
-            return set(self.online_cache.get_vids())
-
-        vids = set()
-        vids.update(self.persisted_cache.get_cached_vids())
-        vids.update(self.online_cache.get_vids())
+        # TODO: optimize to always create a new set?
+        vids = self.main_value_registry.get_vids()
+        if persisted:
+            vids.update(self.persisted_cache.get_vids())
         return vids
 
-    def flush_online_cache(self):
-        self.online_cache.flush()
+    def flush_cache(self):
+        self.online_layer.flush()
 
     def is_stale_call(self, func, args, kwargs, *, depth=-1):
-        fid = self.identity_registry.identify_function(func)
+        fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
 
         return self.is_stale_vid(vid, depth=depth)
 
     def is_stale(self, value, *, depth=-1):
-        if self.online_cache.is_stale(value):
-            print('Global variable has become stale (unknown to online cache!)')
+        if self.staleness_registry.is_stale(value):
+            # More interesting result type?!
+            # Value has become stale!'
             return True
 
         vid = self._get_vid(value)
@@ -139,7 +145,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             return False
 
         fingerprint = self.fingerprint_factory.fingerprint_computed_value(vid)
-        stored_fingerprint = self.online_cache.get_stored_fingerprint(vid)
+        stored_fingerprint = self.main_value_registry.resolve_fingerprint(vid)
 
         if fingerprint != stored_fingerprint:
             print(f'{vid} is stale!')
@@ -161,26 +167,27 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             )
 
     def is_cached(self, func, args, kwargs):
-        fid = self.identity_registry.identify_function(func)
+        fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
 
-        return self.online_cache.has_vid(vid)
+        return self.main_value_registry.has_vid(vid)
 
     def forget_call(self, func, args, kwargs):
-        fid = self.identity_registry.identify_function(func)
+        fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
 
-        self.online_cache.update(vid, None)
+        self.main_value_registry.register(vid, None, None)
 
     def forget(self, value):
         vid = self._get_vid(value)
         if vid is None:
             # TODO: throw or log
             return
-        self.online_cache.update(vid, None)
+        self.main_value_registry.register(vid, None, None)
 
-    def _shall_execute(self, vid, fingerprint):
-        stored_fingerprint = dumbo.online_cache.get_stored_fingerprint(vid)
+    def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
+        # TODO: could directly ask persisted_cache
+        stored_fingerprint = dumbo.online_layer.resolve_fingerprint(vid)
         return stored_fingerprint is None or self.re_execution_policy(self, vid, fingerprint, stored_fingerprint)
 
     @staticmethod
@@ -196,7 +203,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
                     # TODO: maybe log?
                     init_dumbo()
 
-                fid = dumbo.identity_registry.identify_function(func)
+                fid = dumbo.function_registry.identify_function(func)
 
             vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
 
@@ -205,7 +212,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             if dumbo._shall_execute(vid, call_fingerprint):
                 result = func(*args, **kwargs)
                 wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.online_cache.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
+                dumbo.online_layer.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
 
                 return wrapped_result
 
@@ -224,7 +231,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         # This method is a static method, so that dumbo does not need to be initialized.
         fid = None
         if dumbo is not None:
-            fid = dumbo.identity_registry.identify_function(func)
+            fid = dumbo.function_registry.identify_function(func)
 
         return wrapped_func
 
@@ -239,7 +246,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         exec(compiled_function, user_ns, local_ns)
         cell_function = local_ns["cell_function"]
 
-        cell_id = self.identity_registry.identify_cell(name, cell_function)
+        cell_id = self.function_registry.identify_cell(name, cell_function)
         cell_fingerprint = self.fingerprint_factory.fingerprint_cell(cell_function)
 
         outputs = cell_fingerprint.outputs
@@ -258,7 +265,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.online_cache.update(result_vids[name], AnnotatedValue(user_ns[name], result_fingerprints[name]))
+                dumbo.online_layer.update(result_vids[name], AnnotatedValue(user_ns[name], result_fingerprints[name]))
         else:
             for name in outputs:
                 vid = result_vids[name]
@@ -269,32 +276,40 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
                 user_ns[name] = cached_result
 
-    def register_external_value(self, unique_name, value):
-        # TODO: add an error here if value already exists within the cache.
-        vid = value_name_identity(unique_name)
-        self.online_cache.update(vid, AnnotatedValue(value, vid.fingerprint))
+    def tag(self, tag_name: str, value: Optional[object]):
+        vid = None
+        # Value should exist in the cache.
+        if value is not None:
+            vid = self.main_value_registry.identify_value(value)
+            if vid is None:
+                raise ValueError("Value has not been registered previously!")
 
+        self.persisted_cache.tag(tag_name, vid)
+
+    def get_tag_value(self, tag_name):
+        # TODO: might have to expose has_tag etc?
+        vid = self.persisted_cache.get_tag_vid(tag_name)
+        if vid is None:
+            # TODO: log instead
+            #raise ValueError(f"{tag_name} has not been registered previously!")
+            return None
+        value = self.main_value_registry.resolve_value(vid)
+        if value is None:
+            # TODO: log instead!
+            #raise ValueError(f"{vid} for {tag_name} is not available anymore!")
+            return None
+        return value
+
+    def register_external_value(self, unique_name, value):
+        vid = value_name_identity(unique_name)
+        self.main_value_registry.register(vid, value, vid.fingerprint if value is not None else None)
         # TODO: add a test!
 
         return value
 
-    def tag(self, tag_name, value):
-        # Value should exist in the cache.
-        if value is not None:
-            if not self.online_cache.has_value(value):
-                raise ValueError("Value has not been registered previously!")
-            # Register value
-            self.online_cache.tag(tag_name, self._get_vid(value))
-        else:
-            self.online_cache.tag(tag_name, None)
-
-    def get_tag_value(self, tag_name):
-        stored_value = self.online_cache.get_tag_value(tag_name)
-        return stored_value
-
     def get_external_value(self, unique_name):
-        stored_value = self._get_value(value_name_identity(unique_name))
-        return stored_value
+        vid = value_name_identity(unique_name)
+        return self.main_value_registry.resolve_value(vid)
 
     def testing_close(self):
         self.persisted_cache.testing_close()

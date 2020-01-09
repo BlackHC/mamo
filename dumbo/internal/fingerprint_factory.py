@@ -14,6 +14,7 @@ from dumbo.internal.fingerprints import (
     Fingerprint, MAX_FINGERPRINT_VALUE_LENGTH)
 from dumbo.internal.identities import (
     IdentityProvider,
+    FunctionProvider,
     ValueFingerprintIdentity,
     ValueCallIdentity,
     ComputedValueIdentity,
@@ -21,7 +22,7 @@ from dumbo.internal.identities import (
     ValueCellResultIdentity,
     ValueIdentity)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.online_cache import DumboOnlineCache
+from dumbo.internal.online_cache import IValueRegistry
 from dumbo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
@@ -30,10 +31,13 @@ from dumbo.internal.weakref_utils import WeakKeyIdMap
 
 
 class FingerprintFactory(FingerprintProvider):
-    online_cache: DumboOnlineCache
+    # TODO: We only need the FingerprintProvider bit of ValueProvider!
+    # Once we move
+    value_provider: IValueRegistry
     identity_provider: IdentityProvider
+    function_provider: FunctionProvider
 
-    cache: WeakKeyIdMap[Any, Fingerprint]
+    cache: WeakKeyIdMap[object, Fingerprint]
 
     # actually a WeakKeyDictionary!
     code_object_deps: MutableMapping[CodeType, FunctionDependencies]
@@ -44,11 +48,13 @@ class FingerprintFactory(FingerprintProvider):
     def __init__(
             self,
             deep_fingerprint_source_prefix: Optional[str],
-            online_cache: DumboOnlineCache,
+            value_provider: IValueRegistry,
             identity_provider: IdentityProvider,
+            function_provider: FunctionProvider
     ):
-        self.online_cache = online_cache
+        self.value_provider = value_provider
         self.identity_provider = identity_provider
+        self.function_provider = function_provider
 
         self.cache = WeakKeyIdMap()
 
@@ -58,16 +64,17 @@ class FingerprintFactory(FingerprintProvider):
         self.deep_fingerprint_stack = set()
 
     def fingerprint_value(self, value):
+        fingerprint = self.value_provider.fingerprint_value(value)
+        if fingerprint is not None:
+            return fingerprint
+
         # TODO: do I want to store strings like that?
-        if value is None or isinstance(value, (bool, int, float)) or (isinstance(value, str) and len(str) <
+        if value is None or isinstance(value, (bool, int, float)) or (isinstance(value, str) and len(value) <
                                                                       MAX_FINGERPRINT_VALUE_LENGTH):
             # TODO: special-case strings and summarize them?
             return FingerprintDigestRepr(value, repr(value))
 
         fingerprint = self.cache.get(value)
-        if fingerprint is not None:
-            fingerprint = self.online_cache.fingerprint_value(value)
-
         if fingerprint is not None:
             return fingerprint
 
@@ -129,12 +136,12 @@ class FingerprintFactory(FingerprintProvider):
         def fingerprint_from_vid(vid: ValueIdentity):
             if isinstance(vid, ValueFingerprintIdentity):
                 return vid.fingerprint
-            return outer_self.online_cache.get_stored_fingerprint(vid)
+            return outer_self.value_provider.resolve_fingerprint(vid)
 
         class Visitor(ValueIdentityVisitor):
             def visit_call(self, vid: ValueCallIdentity):
                 func_fingerprint = outer_self.fingerprint_function(
-                    outer_self.identity_provider.resolve_function(vid.fid)
+                    outer_self.function_provider.resolve_function(vid.fid)
                 )
                 arg_fingerprints = [
                     fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid
@@ -146,7 +153,7 @@ class FingerprintFactory(FingerprintProvider):
                 return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))
 
             def visit_cell_result(self, vid: ValueCellResultIdentity):
-                cell_function = outer_self.identity_provider.resolve_function(vid.cell)
+                cell_function = outer_self.function_provider.resolve_function(vid.cell)
                 return outer_self.fingerprint_cell_result(outer_self.fingerprint_cell(cell_function), vid.key)
 
         return Visitor().visit(vid)

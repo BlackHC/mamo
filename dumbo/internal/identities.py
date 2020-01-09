@@ -78,6 +78,14 @@ class IdentityProvider:
     def identify_value(self, value) -> ValueIdentity:
         raise NotImplementedError()
 
+
+class FunctionProvider:
+    def identify_function(self, function: FunctionType) -> FunctionIdentity:
+        raise NotImplementedError()
+
+    def identify_cell(self, name: str, cell_function: FunctionType) -> CellIdentity:
+        raise NotImplementedError()
+
     def resolve_function(self, fid: FunctionIdentity) -> FunctionType:
         raise NotImplementedError()
 

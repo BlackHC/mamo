@@ -1,17 +1,17 @@
 from types import FunctionType
+from typing import cast
 
 import dumbo
 from dumbo.internal import main
 
 # Here, we just assume dumbo as general memoization library.
-from dumbo.internal.identities import value_name_identity
+from dumbo.internal.identities import value_name_identity, ValueCallIdentity
 
 from tests.testing import BoxedValue
 
 # noinspection PyUnresolvedReferences
 from tests.testing import dumbo_fixture
 from _pytest.fixtures import fixture
-
 
 dumbo_fib: FunctionType = None
 get_global_var: FunctionType = None
@@ -51,10 +51,11 @@ def dumbo_get_global_var_fixture(dumbo_fixture):
 def test_dumbo_fib(dumbo_fib_fixture):
     result = dumbo_fib(8)
     assert result == 34
-    assert len(main.dumbo.online_cache.value_id_to_vid) == 9
-    assert len(main.dumbo.online_cache.vid_to_value) == 9
+    assert len(dumbo.get_cached_value_identities(False)) == 9
+    assert len(dumbo.get_cached_value_identities(False)) == 9
 
     assert len(dumbo.get_cached_value_identities(False)) == 9
+    del result
     dumbo.flush_online_cache()
     assert len(dumbo.get_cached_value_identities(False)) == 0
     assert len(dumbo.get_cached_value_identities(True)) == 9
@@ -85,7 +86,8 @@ def test_dumbo_register_external_value(dumbo_fib_fixture):
 
     result = dumbo_fib_fixture(magic_number)
 
-    assert main.dumbo.online_cache.value_id_to_vid[id(result)].args_vid[0] == value_name_identity(unique_name)
+    assert cast(ValueCallIdentity, main.dumbo.main_value_registry.identify_value(result)).args_vid[
+               0] == value_name_identity(unique_name)
 
     dumbo.register_external_value(unique_name, None)
 
@@ -151,7 +153,6 @@ def test_run_named_cell(dumbo_fixture):
     main.dumbo.run_cell("named_cell", "pass", user_ns)
 
     assert user_ns_obj.var is var_old
-
 
 # @dumbo.dumbo()
 # def slow_operation(a: int, b: int):
