@@ -27,7 +27,11 @@ class FingerprintProvider:
         raise NotImplementedError()
 
 
-class ValueProvider(IdentityProvider, FingerprintProvider, ABC):
+class ValueOracle(IdentityProvider, FingerprintProvider, ABC):
+    pass
+
+
+class ValueProvider(ValueOracle, ABC):
     def resolve_value(self, vid: ValueIdentity) -> object:
         raise NotImplementedError()
 

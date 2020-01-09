@@ -1,5 +1,5 @@
 from types import CodeType, FunctionType
-from typing import Optional, Set, Dict, MutableMapping, Any
+from typing import Optional, Set, Dict, MutableMapping
 from weakref import WeakKeyDictionary
 
 from dumbo.internal import reflection
@@ -12,14 +12,12 @@ from dumbo.internal.fingerprints import (
     CellFingerprint,
     Fingerprint, MAX_FINGERPRINT_VALUE_LENGTH)
 from dumbo.internal.identities import (
-    ValueFingerprintIdentity,
     ValueCallIdentity,
     ComputedValueIdentity,
     ValueIdentityVisitor,
-    ValueCellResultIdentity,
-    ValueIdentity)
+    ValueCellResultIdentity)
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.providers import ValueProvider, IdentityProvider, FunctionProvider, FingerprintProvider
+from dumbo.internal.providers import ValueProvider, FunctionProvider, FingerprintProvider, ValueOracle
 from dumbo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
@@ -31,7 +29,7 @@ class FingerprintRegistry(FingerprintProvider):
     # TODO: We only need the FingerprintProvider bit of ValueProvider!
     # Once we move
     value_provider: ValueProvider
-    identity_provider: IdentityProvider
+    value_oracle: ValueOracle
     function_provider: FunctionProvider
 
     cache: WeakKeyIdMap[object, Fingerprint]
@@ -46,13 +44,9 @@ class FingerprintRegistry(FingerprintProvider):
             self,
             deep_fingerprint_source_prefix: Optional[str],
             value_provider: ValueProvider,
-            identity_provider: IdentityProvider,
+            value_oracle: ValueOracle,
             function_provider: FunctionProvider
     ):
-        self.value_provider = value_provider
-        self.identity_provider = identity_provider
-        self.function_provider = function_provider
-
         self.cache = WeakKeyIdMap()
 
         self.code_object_deps = WeakKeyDictionary()
@@ -60,11 +54,11 @@ class FingerprintRegistry(FingerprintProvider):
         self.deep_fingerprint_source_prefix = deep_fingerprint_source_prefix
         self.deep_fingerprint_stack = set()
 
-    def fingerprint_value(self, value):
-        fingerprint = self.value_provider.fingerprint_value(value)
-        if fingerprint is not None:
-            return fingerprint
+        self.value_provider = value_provider
+        self.value_oracle = value_oracle
+        self.function_provider = function_provider
 
+    def fingerprint_value(self, value):
         # TODO: do I want to store strings like that?
         if value is None or isinstance(value, (bool, int, float)) or (isinstance(value, str) and len(value) <
                                                                       MAX_FINGERPRINT_VALUE_LENGTH):
@@ -103,8 +97,8 @@ class FingerprintRegistry(FingerprintProvider):
     def fingerprint_call(self, func: FunctionType, args, kwargs: Dict):
         # Call fingerprints (when we allow deep fingerprints) cannot be cached
         func_fingerprint = self._get_function_fingerprint(func)
-        args_fingerprints = tuple(self.fingerprint_value(arg) for arg in args)
-        kwargs_fingerprints = frozenset((name, self.fingerprint_value(arg)) for name, arg in kwargs.items())
+        args_fingerprints = tuple(self.value_oracle.fingerprint_value(arg) for arg in args)
+        kwargs_fingerprints = frozenset((name, self.value_oracle.fingerprint_value(arg)) for name, arg in kwargs.items())
 
         return CallFingerprint(func_fingerprint, args_fingerprints, kwargs_fingerprints)
 
@@ -117,7 +111,7 @@ class FingerprintRegistry(FingerprintProvider):
 
         resolved_globals_loads = reflection.resolve_qualified_names(global_loads, cell_function.__globals__)
         globals_load_fingerprint = frozenset(
-            (name, (self.identity_provider.identify_value(value), self.fingerprint_value(value)))
+            (name, (self.value_oracle.identify_value(value), self.value_oracle.fingerprint_value(value)))
             for name, value in resolved_globals_loads.items()
         )
         cell_fingerprint = CellFingerprint(cell_code_fingerprint, globals_load_fingerprint, frozenset(global_stores))
@@ -130,21 +124,16 @@ class FingerprintRegistry(FingerprintProvider):
         # TODO: move back to main.py:is_stale_vid!
         outer_self = self
 
-        def fingerprint_from_vid(vid: ValueIdentity):
-            if isinstance(vid, ValueFingerprintIdentity):
-                return vid.fingerprint
-            return outer_self.value_provider.resolve_fingerprint(vid)
-
         class Visitor(ValueIdentityVisitor):
             def visit_call(self, vid: ValueCallIdentity):
                 func_fingerprint = outer_self.fingerprint_function(
                     outer_self.function_provider.resolve_function(vid.fid)
                 )
                 arg_fingerprints = [
-                    fingerprint_from_vid(arg_vid) for arg_vid in vid.args_vid
+                    outer_self.value_provider.resolve_fingerprint(arg_vid) for arg_vid in vid.args_vid
                 ]
                 kwarg_fingerprints = [
-                    (name, fingerprint_from_vid(arg_vid))
+                    (name, outer_self.value_provider.resolve_fingerprint(arg_vid))
                     for name, arg_vid in vid.kwargs_vid
                 ]
                 return CallFingerprint(func_fingerprint, tuple(arg_fingerprints), frozenset(kwarg_fingerprints))

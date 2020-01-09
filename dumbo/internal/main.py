@@ -6,13 +6,11 @@ from functools import wraps
 from dumbo.internal.fingerprint_registry import FingerprintRegistry
 from dumbo.internal.fingerprints import Fingerprint, CellResultFingerprint, ResultFingerprint
 from dumbo.internal.identities import (
-    FunctionIdentity,
     ValueIdentity,
     value_name_identity,
     ComputedValueIdentity,
     ValueCallIdentity,
     ValueCellResultIdentity)
-from dumbo.internal.providers import IdentityProvider, FunctionProvider, FingerprintProvider
 from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.function_registry import FunctionRegistry
@@ -58,16 +56,15 @@ def execute_decision_stale(max_depth):
     return decider
 
 
-class Dumbo(IdentityProvider, FingerprintProvider):
-    fingerprint_factory: FingerprintRegistry
-
-    staleness_registry: StalenessRegistry
+class Dumbo:
+    fingerprint_registry: FingerprintRegistry
     identity_registry: IdentityRegistry
+    staleness_registry: StalenessRegistry
     function_registry: FunctionRegistry
 
     value_provider_mediator: ValueProviderMediator
-    external_values: ValueRegistry
-    online_layer: OnlineLayer
+    external_value_registry: ValueRegistry
+    result_registry: OnlineLayer
 
     persisted_cache: DumboPersistedCache
 
@@ -76,33 +73,32 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
         self.persisted_cache = persisted_cache
-        self.staleness_registry = StalenessRegistry()
 
-        self.external_values = ValueRegistry(self.staleness_registry)
-        self.online_layer = OnlineLayer(self.staleness_registry, persisted_cache)
-        self.value_provider_mediator = ValueProviderMediator(self.online_layer, self.external_values)
+        self.value_provider_mediator = ValueProviderMediator()
+
+        self.staleness_registry = StalenessRegistry()
+        self.external_value_registry = ValueRegistry(self.staleness_registry)
+        self.result_registry = OnlineLayer(self.staleness_registry, persisted_cache)
 
         self.function_registry = FunctionRegistry()
-        self.fingerprint_factory = FingerprintRegistry(deep_fingerprint_source_prefix, self.value_provider_mediator, self, self.function_registry)
-        self.identity_registry = IdentityRegistry(self.value_provider_mediator, self)
+        self.fingerprint_registry = FingerprintRegistry(deep_fingerprint_source_prefix, self.value_provider_mediator,
+                                                        self.value_provider_mediator, self.function_registry)
+        self.identity_registry = IdentityRegistry(self.value_provider_mediator)
+
+        self.value_provider_mediator.init(self.identity_registry, self.fingerprint_registry, self.result_registry,
+                                          self.external_value_registry)
 
         self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
 
-    def identify_value(self, value):
-        return self.identity_registry.identify_value(value)
-
-    def fingerprint_value(self, value):
-        return self.fingerprint_factory.fingerprint_value(value)
-
     @property
     def deep_fingerprint_source_prefix(self):
-        return self.fingerprint_factory.deep_fingerprint_source_prefix
+        return self.fingerprint_registry.deep_fingerprint_source_prefix
 
     # TODO: remove this property again (only used by tests!)
 
     @deep_fingerprint_source_prefix.setter
     def deep_fingerprint_source_prefix(self, value):
-        self.fingerprint_factory.deep_fingerprint_source_prefix = value
+        self.fingerprint_registry.deep_fingerprint_source_prefix = value
 
     def _get_value(self, vid: ValueIdentity):
         return self.value_provider_mediator.resolve_value(vid)
@@ -118,7 +114,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         return vids
 
     def flush_cache(self):
-        self.online_layer.flush()
+        self.result_registry.flush()
 
     def is_stale_call(self, func, args, kwargs, *, depth=-1):
         fid = self.function_registry.identify_function(func)
@@ -146,7 +142,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         if not isinstance(vid, ComputedValueIdentity):
             return False
 
-        fingerprint = self.fingerprint_factory.fingerprint_computed_value(vid)
+        fingerprint = self.fingerprint_registry.fingerprint_computed_value(vid)
         stored_fingerprint = self.value_provider_mediator.resolve_fingerprint(vid)
 
         if fingerprint != stored_fingerprint:
@@ -189,7 +185,7 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
     def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
         # TODO: could directly ask persisted_cache
-        stored_fingerprint = dumbo.online_layer.resolve_fingerprint(vid)
+        stored_fingerprint = dumbo.result_registry.resolve_fingerprint(vid)
         return stored_fingerprint is None or self.re_execution_policy(self, vid, fingerprint, stored_fingerprint)
 
     @staticmethod
@@ -209,12 +205,12 @@ class Dumbo(IdentityProvider, FingerprintProvider):
 
             vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
 
-            call_fingerprint = dumbo.fingerprint_factory.fingerprint_call(func, args, kwargs)
+            call_fingerprint = dumbo.fingerprint_registry.fingerprint_call(func, args, kwargs)
 
             if dumbo._shall_execute(vid, call_fingerprint):
                 result = func(*args, **kwargs)
                 wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.online_layer.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
+                dumbo.result_registry.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
 
                 return wrapped_result
 
@@ -249,13 +245,13 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         cell_function = local_ns["cell_function"]
 
         cell_id = self.function_registry.identify_cell(name, cell_function)
-        cell_fingerprint = self.fingerprint_factory.fingerprint_cell(cell_function)
+        cell_fingerprint = self.fingerprint_registry.fingerprint_cell(cell_function)
 
         outputs = cell_fingerprint.outputs
 
         result_vids = {name: self.identity_registry.identify_cell_result(cell_id, name) for name in outputs}
         result_fingerprints = {
-            name: self.fingerprint_factory.fingerprint_cell_result(cell_fingerprint, name) for name in outputs
+            name: self.fingerprint_registry.fingerprint_cell_result(cell_fingerprint, name) for name in outputs
         }
 
         # TODO: this adds some staleness overhead but not sure how to handle composites atm.
@@ -267,7 +263,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.online_layer.update(result_vids[name], AnnotatedValue(user_ns[name], result_fingerprints[name]))
+                dumbo.result_registry.update(result_vids[name],
+                                             AnnotatedValue(user_ns[name], result_fingerprints[name]))
         else:
             for name in outputs:
                 vid = result_vids[name]
@@ -293,12 +290,12 @@ class Dumbo(IdentityProvider, FingerprintProvider):
         vid = self.persisted_cache.get_tag_vid(tag_name)
         if vid is None:
             # TODO: log instead
-            #raise ValueError(f"{tag_name} has not been registered previously!")
+            # raise ValueError(f"{tag_name} has not been registered previously!")
             return None
         value = self.value_provider_mediator.resolve_value(vid)
         if value is None:
             # TODO: log instead!
-            #raise ValueError(f"{vid} for {tag_name} is not available anymore!")
+            # raise ValueError(f"{vid} for {tag_name} is not available anymore!")
             return None
         return value
 
@@ -316,7 +313,8 @@ class Dumbo(IdentityProvider, FingerprintProvider):
     def testing_close(self):
         self.persisted_cache.testing_close()
         self.identity_registry = None
-        self.fingerprint_factory = None
+        self.fingerprint_registry = None
+        self.value_provider_mediator = None
         import gc
         gc.collect()
 

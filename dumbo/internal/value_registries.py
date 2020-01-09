@@ -33,6 +33,7 @@ class AbstractValueRegistry(ValueProvider):
         if vid in self.vid_value_bimap:
             existing_value = self.vid_value_bimap.get_value(vid)
             self.staleness_registry.mark_stale(existing_value)
+            del self.value_fingerprint_map[existing_value]
 
         self.vid_value_bimap.update(vid, value)
         if value is not None:

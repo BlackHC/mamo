@@ -2,9 +2,10 @@ import dumbo.internal.persisted_cache
 import pytest
 
 from dumbo.internal.fingerprints import ResultFingerprint
-from dumbo.internal.identities import value_name_identity, ValueCallIdentity, FunctionIdentity
+from dumbo.internal.identities import value_name_identity, ValueCallIdentity, FunctionIdentity, ValueIdentity
 from dumbo.internal.annotated_value import AnnotatedValue, AnnotatedValue
 from dumbo.internal.online_cache import OnlineLayer
+from dumbo.internal.providers import ValueOracle
 from dumbo.internal.value_provider_mediator import ValueProviderMediator
 from dumbo.internal.value_registries import ValueRegistry
 from dumbo.internal.staleness_registry import StalenessRegistry
@@ -54,12 +55,23 @@ def test_doc_updating_value_works():
     assert online_cache.identify_value(value2.value) == vid
     assert online_cache.identify_value(value1.value) is None
 
+
+class NullValueOracle(ValueOracle):
+    def identify_value(self, value) -> ValueIdentity:
+        return None
+
+    def fingerprint_value(self, value):
+        return None
+
+
 def test_doc_updating_same_value_throws():
     # Tt violates the "each call, different result" policy
     # TODO: add a custom exception type!
     persisted_cache = DummyPersistedCache()
     staleness_registry = StalenessRegistry()
-    online_cache = ValueProviderMediator(ValueRegistry(staleness_registry), ValueRegistry(staleness_registry))
+    online_cache = ValueProviderMediator()
+    null_oracle = NullValueOracle()
+    online_cache.init(null_oracle, null_oracle, ValueRegistry(staleness_registry), ValueRegistry(staleness_registry))
 
     vid = create_call_vid(1)
     fingerprint = ResultFingerprint()

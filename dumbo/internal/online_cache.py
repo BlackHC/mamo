@@ -86,10 +86,10 @@ class OnlineLayer(ValueProvider):
         return fingerprint
 
     def has_vid(self, vid):
-        return self.result_registry.has_vid(vid) is not None or self.persisted_cache.has_vid(vid)
+        return self.result_registry.has_vid(vid) or self.persisted_cache.has_vid(vid)
 
     def has_value(self, value):
-        return self.result_registry.has_value(value) is not None
+        return self.result_registry.has_value(value)
 
 
 # # TODO: big Q: does online cache only hold CIDs and external objects?

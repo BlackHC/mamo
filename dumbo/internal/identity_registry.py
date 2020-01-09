@@ -7,20 +7,18 @@ from dumbo.internal.identities import (
     ValueCallIdentity,
     ValueCellResultIdentity
 )
-from dumbo.internal.providers import IdentityProvider, FingerprintProvider
+from dumbo.internal.providers import IdentityProvider, ValueOracle
 
 
 class IdentityRegistry(IdentityProvider):
-    value_provider: IdentityProvider
-    fingerprint_provider: FingerprintProvider
+    value_oracle: ValueOracle
 
-    def __init__(self, value_provider: IdentityProvider, fingerprint_provider: FingerprintProvider):
-        self.value_provider = value_provider
-        self.fingerprint_provider = fingerprint_provider
+    def __init__(self, value_oracle: ValueOracle):
+        self.value_oracle = value_oracle
 
     def identify_call(self, fid, args, kwargs) -> ValueCallIdentity:
-        args_vid = tuple(self.identify_value(arg) for arg in args)
-        kwargs_vid = frozenset((name, self.identify_value(value)) for name, value in kwargs.items())
+        args_vid = tuple(self.value_oracle.identify_value(arg) for arg in args)
+        kwargs_vid = frozenset((name, self.value_oracle.identify_value(value)) for name, value in kwargs.items())
 
         return ValueCallIdentity(fid, args_vid, kwargs_vid)
 
@@ -28,9 +26,5 @@ class IdentityRegistry(IdentityProvider):
         return ValueCellResultIdentity(cell_identity, key)
 
     def identify_value(self, value) -> ValueIdentity:
-        vid = self.value_provider.identify_value(value)
-        if vid is not None:
-            return vid
-
-        fingerprint = self.fingerprint_provider.fingerprint_value(value)
+        fingerprint = self.value_oracle.fingerprint_value(value)
         return ValueFingerprintIdentity(reflection.get_type_qualified_name(value), fingerprint)
