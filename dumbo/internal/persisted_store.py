@@ -15,6 +15,7 @@ from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.identities import ValueIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 from dumbo.internal.result_metadata import ResultMetadata
+from dumbo.internal.stopwatch_context import StopwatchContext
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
@@ -51,6 +52,7 @@ class CacheOperationResult:
     cached_value: CachedValue
     result_size: int
     stored_size: int
+    save_duration: float
 
 
 # TODO: to repr method
@@ -111,32 +113,35 @@ class PersistedStore:
     def try_create_cached_value(
             self, vid: ValueIdentity, value: object
     ) -> Optional[CacheOperationResult]:
-        assert value is not None
-        object_saver = MODULE_EXTENSIONS.get_object_saver(value)
-        if not object_saver:
-            # TODO: log?
-            return None
+        with StopwatchContext() as stopwatch:
+            assert value is not None
+            object_saver = MODULE_EXTENSIONS.get_object_saver(value)
+            if not object_saver:
+                # TODO: log?
+                return None
 
-        estimated_size = object_saver.get_estimated_size()
-        if estimated_size is None:
-            # TODO: log?
-            return None
+            estimated_size = object_saver.get_estimated_size()
+            if estimated_size is None:
+                # TODO: log?
+                return None
 
-        external_path_builder = None
-        # If we exceed a reasonable size, we don't store the result in the DB.
-        # However, if we are memory-only, we don't cache in external files.
-        if estimated_size > MAX_DB_CACHED_VALUE_SIZE and self.externally_cached_path is not None:
-            external_path_builder = ExternallyCachedFilePath(
-                self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
-            )
+            external_path_builder = None
+            # If we exceed a reasonable size, we don't store the result in the DB.
+            # However, if we are memory-only, we don't cache in external files.
+            if estimated_size > MAX_DB_CACHED_VALUE_SIZE and self.externally_cached_path is not None:
+                external_path_builder = ExternallyCachedFilePath(
+                    self.externally_cached_path, self.get_new_external_id(), vid.get_external_info()
+                )
 
-        cached_value = object_saver.cache_value(external_path_builder)
-        if not cached_value:
-            # TODO: log?
-            return None
+            cached_value = object_saver.cache_value(external_path_builder)
+            if not cached_value:
+                # TODO: log?
+                return None
 
-        stored_size = cached_value.get_stored_size()
-        return CacheOperationResult(cached_value, estimated_size, stored_size)
+            stored_size = cached_value.get_stored_size()
+
+        return CacheOperationResult(cached_value=cached_value, result_size=estimated_size, stored_size=stored_size,
+                                    save_duration=stopwatch.elapsed_time)
 
     def add(self, vid: ValueIdentity, value: object, fingerprint: Fingerprint):
         assert value is not None
@@ -161,8 +166,11 @@ class PersistedStore:
             if result.cached_value:
                 self.storage.vid_to_cached_value[vid] = result.cached_value
                 self.storage.vid_to_fingerprint[vid] = fingerprint
-                self.storage.vid_to_result_metadata[vid] = ResultMetadata(result_size=result.result_size,
-                                                                          stored_size=result.stored_size)
+
+                result_metadata = ResultMetadata(result_size=result.result_size,
+                                                 stored_size=result.stored_size,
+                                                 save_duration=result.save_duration)
+                self.storage.vid_to_result_metadata[vid] = result_metadata
             else:
                 if existing_cached_value:
                     del self.storage.vid_to_cached_value[vid]
@@ -192,8 +200,15 @@ class PersistedStore:
             return None
 
         # Load value
-        loaded_value = cached_value.load()
-        wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
+        with StopwatchContext() as stopwatch:
+            loaded_value = cached_value.load()
+            wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
+
+        metadata = self.get_result_metadata(vid)
+        with self.transaction_manager:
+            metadata.total_load_durations += stopwatch.elapsed_time
+            metadata.num_loads += 1
+
         return wrapped_value
 
     def get_fingerprint(self, vid: ValueIdentity):

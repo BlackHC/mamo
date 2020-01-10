@@ -58,6 +58,20 @@ def test_persisted_store_get_metadata_works():
     assert result_metadata
     assert result_metadata.result_size == 54
     assert result_metadata.stored_size == 54
+    assert result_metadata.save_duration > 0
+
+    assert result_metadata.num_loads == 0
+    assert result_metadata.total_load_durations == 0.0
+
+    assert store.load_value(vid) == value
+
+    assert result_metadata.num_loads == 1
+    first_load_duration = result_metadata.total_load_durations
+    assert first_load_duration > 0.0
+
+    assert store.load_value(vid) == value
+    assert result_metadata.num_loads == 2
+    assert result_metadata.total_load_durations > first_load_duration
 
 
 def test_persisted_store_persists():

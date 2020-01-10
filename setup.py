@@ -49,7 +49,7 @@ setup(
     keywords="tools memoization data",
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=["dumbo", "dumbo.internal", "dumbo.support"],
+    packages=["dumbo", "dumbo.internal", "dumbo.support", "dumbo.internal.common"],
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
