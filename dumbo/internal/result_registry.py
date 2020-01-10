@@ -77,12 +77,11 @@ class ResultRegistry(ValueProvider):
     # TODO: rename to something that makes clear it might be very expensive!!
     def resolve_value(self, vid: ComputedValueIdentity):
         value = self.online_registry.resolve_value(vid)
-        if value is None:
-            annotated_value = self.persisted_store.get_stored_result(vid)
-            if annotated_value is not None:
-                value = annotated_value.value
-                self.values.add(value)
-                self.online_registry.add(vid, value, annotated_value.fingerprint)
+        if value is None and self.persisted_store.has_vid(vid):
+            value = self.persisted_store.load_value(vid)
+            fingerprint = self.persisted_store.get_fingerprint(vid)
+            self.values.add(value)
+            self.online_registry.add(vid, value, fingerprint)
 
         return value
 
@@ -90,9 +89,7 @@ class ResultRegistry(ValueProvider):
         fingerprint = self.online_registry.fingerprint_value(self.online_registry.resolve_value(vid))
 
         if fingerprint is None:
-            cached_value = self.persisted_store.get_cached_value(vid)
-            if cached_value is not None:
-                fingerprint = cached_value.fingerprint
+            fingerprint = self.persisted_store.get_fingerprint(vid)
 
         return fingerprint
 

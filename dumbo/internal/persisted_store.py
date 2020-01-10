@@ -1,7 +1,7 @@
 import os
 import pickle
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 
 from ZODB import DB
 from ZODB.FileStorage.FileStorage import FileStorage
@@ -28,8 +28,8 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
 @dataclass
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
-    vid_to_cached_value: PersistentMapping
-    vid_to_fingerprint: PersistentMapping
+    vid_to_cached_value: Dict[ValueIdentity, CachedValue]
+    vid_to_fingerprint: Dict[ValueIdentity, Fingerprint]
     tag_to_vid: PersistentBimap[str, ValueIdentity]
 
     def __init__(self):
@@ -72,7 +72,7 @@ class PersistedStore:
         # TODO: log the paths?
         # TODO: in general, make properties available for quering in the console/Jupyter?
 
-        db = DB(FileStorage(os.path.join(path, "dumbo_persisted_cache")))
+        db = DB(FileStorage(os.path.join(path, "dumbo_store")))
         return PersistedStore(db, path, externally_cached_path)
 
     def __init__(self, db: DB, path: Optional[str], externally_cached_path: Optional[str]):
@@ -166,31 +166,24 @@ class PersistedStore:
                 del self.storage.vid_to_cached_value[vid]
                 del self.storage.vid_to_fingerprint[vid]
 
-    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedValue]):
-        if value is None:
-            self.remove_vid(vid)
-        else:
-            self.add(vid, value.value, value.fingerprint)
-
     def get_vids(self):
-        return self.storage.vid_to_cached_value.keys()
+        return set(self.storage.vid_to_cached_value.keys())
 
-    def get_cached_value(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue[CachedValue]]:
-        annotated_value = AnnotatedValue(self.storage.vid_to_cached_value.get(vid), self.storage.vid_to_fingerprint.get(vid))
-        if annotated_value.value is None:
-            return None
-        return annotated_value
+    def get_cached_value(self, vid: ValueIdentity):
+        return self.storage.vid_to_cached_value.get(vid)
 
-    def get_stored_result(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue]:
+    def load_value(self, vid: ValueIdentity):
         cached_value = self.get_cached_value(vid)
         if not cached_value:
             return None
 
         # Load value
-        loaded_value = cached_value.value.load()
+        loaded_value = cached_value.load()
         wrapped_value = MODULE_EXTENSIONS.wrap_return_value(loaded_value)
+        return wrapped_value
 
-        return AnnotatedValue(wrapped_value, cached_value.fingerprint)
+    def get_fingerprint(self, vid: ValueIdentity):
+        return self.storage.vid_to_fingerprint.get(vid)
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         with self.transaction_manager:

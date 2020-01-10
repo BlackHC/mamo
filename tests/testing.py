@@ -23,6 +23,12 @@ class DummyPersistedStore(persisted_store.PersistedStore):
         self.vid_to_fingerprint = {}
         self.tag_to_vid = {}
 
+    def get_vids(self):
+        return set(self.vid_to_cached_value.keys())
+
+    def has_vid(self, vid):
+        return vid in self.vid_to_cached_value
+
     def try_create_cached_value(self, vid, value):
         return DBPickledValue(value)
 
@@ -41,12 +47,11 @@ class DummyPersistedStore(persisted_store.PersistedStore):
         else:
             self.add(vid, value.value, value.fingerprint)
 
+    def get_fingerprint(self, vid):
+        return self.vid_to_fingerprint.get(vid)
+
     def get_cached_value(self, vid):
-        value = self.vid_to_cached_value.get(vid)
-        if not value:
-            return None
-        fingerprint = self.vid_to_fingerprint.get[vid]
-        return AnnotatedValue(value, fingerprint)
+        return self.vid_to_cached_value.get(vid)
 
     def tag(self, tag_name: str, vid: ValueIdentity):
         self.tag_to_vid[tag_name] = vid

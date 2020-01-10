@@ -9,101 +9,106 @@ from tests.testing import BoxedValue
 import tempfile
 
 
-def test_persisted_cache_memory_only():
-    cache = PersistedStore.from_memory()
+def test_persisted_store_memory_only_add_works():
+    store = PersistedStore.from_memory()
 
     vid = value_name_identity("test")
-    value = AnnotatedValue(BoxedValue(1), vid.fingerprint)
+    value = BoxedValue(1)
 
-    assert cache.get_cached_value(vid) is None
-    cache.update(vid, value)
-    assert cache.get_cached_value(vid).value.load() == value.value
-
-
-def test_persisted_cache_update_none_works():
-    cache = PersistedStore.from_memory()
-
-    vid = value_name_identity("test")
-    value = AnnotatedValue(BoxedValue(1), vid.fingerprint)
-
-    assert cache.get_cached_value(vid) is None
-    cache.update(vid, value)
-    assert cache.get_cached_value(vid).value.load() == value.value
-    cache.update(vid, None)
-    assert cache.get_cached_value(vid) is None
+    assert store.load_value(vid) is None
+    store.add(vid, value, vid.fingerprint)
+    assert store.load_value(vid) == value
+    assert store.get_fingerprint(vid) == vid.fingerprint
 
 
-def test_persisted_cache_get_vids_works():
-    cache = PersistedStore.from_memory()
+def test_persisted_store_memory_only_remove_works():
+    store = PersistedStore.from_memory()
 
     vid = value_name_identity("test")
-    value = AnnotatedValue(BoxedValue(1), vid.fingerprint)
+    value = BoxedValue(1)
 
-    assert cache.get_cached_value(vid) is None
-    cache.update(vid, value)
+    assert store.load_value(vid) is None
+    store.add(vid, value, vid.fingerprint)
+    assert store.load_value(vid) == value
+    assert store.get_fingerprint(vid) == vid.fingerprint
+    store.remove_vid(vid)
+    assert store.load_value(vid) is None
 
-    assert cache.get_vids() == {vid}
+
+def test_persisted_store_get_vids_works():
+    store = PersistedStore.from_memory()
+
+    vid = value_name_identity("test")
+    value = BoxedValue(1)
+
+    assert store.load_value(vid) is None
+    store.add(vid, value, vid.fingerprint)
+
+    assert store.get_vids() == {vid}
 
 
-def test_persisted_cache_persists():
+def test_persisted_store_persists():
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir
 
-        cache = PersistedStore.from_file(db_path)
+        store = PersistedStore.from_file(db_path)
 
         vid = value_name_identity("test")
-        value = AnnotatedValue(BoxedValue(1), vid.fingerprint)
+        value = BoxedValue(1)
         tag_name = "duck"
 
-        assert cache.get_cached_value(vid) is None
-        assert cache.get_tag_vid(tag_name) is None
+        assert store.load_value(vid) is None
+        assert store.get_tag_vid(tag_name) is None
 
-        cache.update(vid, value)
-        cache.tag(tag_name, vid)
+        store.add(vid, value, vid.fingerprint)
+        store.tag(tag_name, vid)
 
-        assert cache.get_cached_value(vid).value.load() == value.value
-        assert cache.get_tag_vid(tag_name) is vid
+        assert store.load_value(vid) == value
+        assert store.get_fingerprint(vid) == vid.fingerprint
+        assert store.get_tag_vid(tag_name) is vid
 
-        cache.testing_close()
+        store.testing_close()
 
-        cache = PersistedStore.from_file(db_path)
-        assert cache.get_cached_value(vid).value.load() == value.value
-        assert cache.get_tag_vid(tag_name) == vid
+        store = PersistedStore.from_file(db_path)
+        assert store.load_value(vid) == value
+        assert store.get_fingerprint(vid) == vid.fingerprint
+        assert store.get_tag_vid(tag_name) == vid
 
-        cache.testing_close()
+        store.testing_close()
 
 
-def test_persisted_cache_persists_different_paths():
+def test_persisted_store_persists_different_paths():
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir
         external_path = path.join(temp_storage_dir, "ext")
         mkdir(external_path)
 
-        cache = PersistedStore.from_file(db_path, external_path)
+        store = PersistedStore.from_file(db_path, external_path)
 
         vid = value_name_identity("test")
-        value = AnnotatedValue(list(range(100000)), vid.fingerprint)
+        value = list(range(100000))
         tag_name = "duck"
 
-        assert cache.get_cached_value(vid) is None
-        assert cache.get_tag_vid(tag_name) is None
+        assert store.load_value(vid) is None
+        assert store.get_tag_vid(tag_name) is None
 
-        cache.update(vid, value)
-        cache.tag(tag_name, vid)
+        store.add(vid, value, vid.fingerprint)
+        store.tag(tag_name, vid)
 
-        assert cache.get_cached_value(vid).value.path == path.join(
+        assert store.get_cached_value(vid).path == path.join(
             external_path, "test_builtins.list_0000000000.pickle"
         )
-        assert cache.get_tag_vid(tag_name) is vid
+        assert store.get_fingerprint(vid) == vid.fingerprint
+        assert store.get_tag_vid(tag_name) is vid
 
-        cache.testing_close()
+        store.testing_close()
 
         print(temp_storage_dir)
         assert set(listdir(temp_storage_dir)) == {
-            "dumbo_persisted_cache",
-            "dumbo_persisted_cache.index",
-            "dumbo_persisted_cache.lock",
-            "dumbo_persisted_cache.tmp",
+            "dumbo_store",
+            "dumbo_store.index",
+            "dumbo_store.lock",
+            "dumbo_store.tmp",
             "ext",
         }
         assert listdir(external_path) == ["test_builtins.list_0000000000.pickle"]
