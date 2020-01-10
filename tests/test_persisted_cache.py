@@ -46,6 +46,18 @@ def test_persisted_store_get_vids_works():
     assert store.get_vids() == {vid}
 
 
+def test_persisted_store_get_metadata_works():
+    store = PersistedStore.from_memory()
+
+    vid = value_name_identity("test")
+    value = BoxedValue(1)
+
+    store.add(vid, value, vid.fingerprint)
+
+    result_metadata = store.get_result_metadata(vid)
+    assert result_metadata
+    assert result_metadata.result_size == 54
+
 def test_persisted_store_persists():
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir

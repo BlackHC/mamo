@@ -14,6 +14,7 @@ from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, 
 from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.identities import ValueIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
+from dumbo.internal.result_metadata import ResultMetadata
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
@@ -29,11 +30,13 @@ class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: Dict[ValueIdentity, CachedValue]
     vid_to_fingerprint: Dict[ValueIdentity, Fingerprint]
+    vid_to_result_metadata: Dict[ValueIdentity, ResultMetadata]
     tag_to_vid: PersistentBimap[str, ValueIdentity]
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
         self.vid_to_fingerprint = PersistentMapping()
+        self.vid_to_result_metadata = PersistentMapping()
         self.tag_to_vid = PersistentBimap()
         self.external_cache_id = 0
 
@@ -99,7 +102,7 @@ class PersistedStore:
         return self.storage.get_new_external_id()
 
     def try_create_cached_value(
-        self, vid: ValueIdentity, value: object
+            self, vid: ValueIdentity, value: object, result_metadata: ResultMetadata
     ) -> Optional[CachedValue]:
         assert value is not None
         object_saver = MODULE_EXTENSIONS.get_object_saver(value)
@@ -111,6 +114,8 @@ class PersistedStore:
         if estimated_size is None:
             # TODO: log?
             return None
+
+        result_metadata.result_size = estimated_size
 
         external_path_builder = None
         # If we exceed a reasonable size, we don't store the result in the DB.
@@ -146,14 +151,18 @@ class PersistedStore:
             # assert isinstance(value.value, ObjectProxy)
             # value = dataclasses.replace(value, value=value.value.__subject__)
 
-            cached_value = self.try_create_cached_value(vid, value)
+            result_metadata = ResultMetadata()
+
+            cached_value = self.try_create_cached_value(vid, value, result_metadata)
             if cached_value:
                 self.storage.vid_to_cached_value[vid] = cached_value
                 self.storage.vid_to_fingerprint[vid] = fingerprint
+                self.storage.vid_to_result_metadata[vid] = result_metadata
             else:
                 if existing_cached_value:
                     del self.storage.vid_to_cached_value[vid]
                     del self.storage.vid_to_fingerprint[vid]
+                    del self.storage.vid_to_result_metadata[vid]
 
     def remove_vid(self, vid: ValueIdentity):
         with self.transaction_manager:
@@ -164,6 +173,7 @@ class PersistedStore:
 
                 del self.storage.vid_to_cached_value[vid]
                 del self.storage.vid_to_fingerprint[vid]
+                del self.storage.vid_to_result_metadata[vid]
 
     def get_vids(self):
         return set(self.storage.vid_to_cached_value.keys())
@@ -183,6 +193,9 @@ class PersistedStore:
 
     def get_fingerprint(self, vid: ValueIdentity):
         return self.storage.vid_to_fingerprint.get(vid)
+
+    def get_result_metadata(self, vid: ValueIdentity):
+        return self.storage.vid_to_result_metadata.get(vid)
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):
         with self.transaction_manager:
