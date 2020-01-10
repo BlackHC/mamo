@@ -15,6 +15,11 @@ def _ensure_dumbo_init():
         init_dumbo()
 
 
+def _require_dumbo():
+    if main.dumbo is None:
+        raise RuntimeError("Dumbo not initialized!")
+
+
 def register_external_value(unique_name, value):
     _ensure_dumbo_init()
 
@@ -40,7 +45,7 @@ def get_external_value(unique_name):
 
 
 def flush_online_cache():
-    _ensure_dumbo_init()
+    _require_dumbo()
     main.dumbo.flush_cache()
 
 
@@ -54,14 +59,20 @@ def get_cached_value_identities(persisted=False):
     return vids
 
 
+def get_metadata(value):
+    _require_dumbo()
+
+    return main.dumbo.get_metadata(value)
+
+
 def is_stale(value, *, depth=-1):
-    _ensure_dumbo_init()
+    _require_dumbo()
 
     return main.dumbo.is_stale(value, depth=depth)
 
 
 def forget(value):
-    _ensure_dumbo_init()
+    _require_dumbo()
 
     main.dumbo.forget(value)
 

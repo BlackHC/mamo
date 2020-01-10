@@ -211,10 +211,10 @@ class PersistedStore:
 
         return wrapped_value
 
-    def get_fingerprint(self, vid: ValueIdentity):
+    def get_fingerprint(self, vid: ValueIdentity) -> Fingerprint:
         return self.storage.vid_to_fingerprint.get(vid)
 
-    def get_result_metadata(self, vid: ValueIdentity):
+    def get_result_metadata(self, vid: ValueIdentity) -> ResultMetadata:
         return self.storage.vid_to_result_metadata.get(vid)
 
     def tag(self, tag_name: str, vid: Optional[ValueIdentity]):

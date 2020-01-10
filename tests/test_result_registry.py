@@ -41,8 +41,9 @@ class TestResultRegistry(ValueProviderTests):
 
         self.assert_vvf_missing(instance, vvf)
         self.add_vvf(instance, vvf)
-        instance.flush()
+
         del vvf
+        instance.flush()
 
         assert instance.has_vid(vid)
         # TODO: this is weird tbh. But cannot separate between online and persisted vids otherwise?

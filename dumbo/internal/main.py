@@ -1,5 +1,6 @@
 import ast
-from typing import Optional
+import dataclasses
+from typing import Optional, List
 
 from functools import wraps
 
@@ -14,7 +15,9 @@ from dumbo.internal.identities import (
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.function_registry import FunctionRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
+from dumbo.internal.result_metadata import ResultMetadata
 from dumbo.internal.result_registry import ResultRegistry
+from dumbo.internal.stopwatch_context import StopwatchContext
 from dumbo.internal.value_provider_mediator import ValueProviderMediator
 from dumbo.internal.value_registries import ValueRegistry
 from dumbo.internal.staleness_registry import StalenessRegistry
@@ -69,6 +72,8 @@ class Dumbo:
 
     re_execution_policy: ReExecutionPolicy
 
+    _subcall_duration: List
+
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
         self.persisted_store = persisted_cache
@@ -88,6 +93,8 @@ class Dumbo:
                                           self.external_value_registry)
 
         self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
+
+        self._call_duration_stack = [0.0]
 
     @property
     def deep_fingerprint_source_prefix(self):
@@ -181,6 +188,23 @@ class Dumbo:
             return
         self.value_provider_mediator.remove_value(value)
 
+    def get_metadata_call(self, func, args, kwargs) -> Optional[ResultMetadata]:
+        fid = self.function_registry.identify_function(func)
+        vid = self.identity_registry.identify_call(fid, args, kwargs)
+
+        metadata = self.persisted_store.get_result_metadata(vid)
+        if not metadata:
+            return None
+        return dataclasses.replace(metadata)
+
+    def get_metadata(self, value) -> Optional[ResultMetadata]:
+        vid = self.value_provider_mediator.identify_value(value)
+        metadata = self.persisted_store.get_result_metadata(vid)
+
+        if not metadata:
+            return None
+        return dataclasses.replace(metadata)
+
     def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
         # TODO: could directly ask persisted_cache
         stored_fingerprint = dumbo.result_registry.resolve_fingerprint(vid)
@@ -190,39 +214,50 @@ class Dumbo:
     def wrap_function(func):
         @wraps(func)
         def wrapped_func(*args, **kwargs):
-            nonlocal fid
+            with StopwatchContext() as total_stopwatch:
+                nonlocal fid
 
-            # If dumbo was not initialized before, we might still have to set fid.
-            if fid is None:
-                # Just initialize it with defaults.
-                if dumbo is None:
-                    # TODO: maybe log?
-                    init_dumbo()
+                # If dumbo was not initialized before, we might still have to set fid.
+                if fid is None:
+                    # Just initialize it with defaults.
+                    if dumbo is None:
+                        # TODO: maybe log?
+                        init_dumbo()
 
-                fid = dumbo.function_registry.identify_function(func)
+                    fid = dumbo.function_registry.identify_function(func)
 
-            vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
+                vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
 
-            call_fingerprint = dumbo.fingerprint_registry.fingerprint_call(func, args, kwargs)
+                call_fingerprint = dumbo.fingerprint_registry.fingerprint_call(func, args, kwargs)
+                result_metadata = dumbo.persisted_store.get_result_metadata(vid)
 
-            if dumbo._shall_execute(vid, call_fingerprint):
-                result = func(*args, **kwargs)
-                wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.value_provider_mediator.add(vid, wrapped_result, call_fingerprint)
+                if dumbo._shall_execute(vid, call_fingerprint):
+                    dumbo._call_duration_stack.append(0.)
+                    with StopwatchContext() as call_stopwatch:
+                        result = func(*args, **kwargs)
+                    wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
+                    dumbo.value_provider_mediator.add(vid, wrapped_result, call_fingerprint)
 
-                return wrapped_result
+                    result_metadata = dumbo.persisted_store.get_result_metadata(vid)
+                    result_metadata.call_duration = call_stopwatch.elapsed_time
+                    result_metadata.subcall_duration = dumbo._call_duration_stack.pop()
+                else:
+                    wrapped_result = dumbo._get_value(vid)
+                    if wrapped_result is None:
+                        # log?
+                        raise RuntimeError(f"Couldn't find cached result for {vid}!")
 
-            cached_result = dumbo._get_value(vid)
-            if cached_result is None:
-                # log?
-                raise RuntimeError(f"Couldn't find cached result for {vid}!")
+                    result_metadata.num_cache_hits += 1
 
-            return cached_result
+            result_metadata.total_durations += total_stopwatch.elapsed_time
+            dumbo._call_duration_stack[-1] += total_stopwatch.elapsed_time
+            return wrapped_result
 
         wrapped_func.dumbo_unwrapped_func = func
         wrapped_func.is_stale = lambda *args, **kwargs: dumbo.is_stale_call(func, args, kwargs)
         wrapped_func.is_cached = lambda *args, **kwargs: dumbo.is_cached(func, args, kwargs)
         wrapped_func.forget = lambda *args, **kwargs: dumbo.forget_call(func, args, kwargs)
+        wrapped_func.get_metadata = lambda *args, **kwargs: dumbo.get_metadata_call(func, args, kwargs)
 
         # This method is a static method, so that dumbo does not need to be initialized.
         fid = None

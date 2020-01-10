@@ -61,6 +61,29 @@ def test_dumbo_fib(dumbo_fib_fixture):
     assert len(dumbo.get_cached_value_identities(True)) == 9
 
 
+def test_dumbo_fib_metadata(dumbo_fib_fixture):
+    result = dumbo_fib(8)
+    del result
+    dumbo.flush_online_cache()
+
+    dumbo_fib(8)
+    dumbo_fib(8)
+    dumbo_fib(8)
+    dumbo.flush_online_cache()
+
+    result = dumbo_fib(8)
+
+    metadata = dumbo.get_metadata(result)
+
+    assert metadata.num_loads == 2
+    assert metadata.num_cache_hits == 4
+    assert metadata.call_duration > 0
+    assert metadata.subcall_duration > 0
+    assert metadata.total_load_durations > 0
+    assert metadata.total_durations > metadata.call_duration
+    assert metadata.call_duration > metadata.subcall_duration
+
+
 def test_dumbo_can_wrap_uninitialized():
     # and creates dumbo on call
 
