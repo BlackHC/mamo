@@ -82,6 +82,52 @@ def test_dumbo_fib_metadata(dumbo_fib_fixture):
     assert metadata.total_load_durations > 0
     assert metadata.total_durations > metadata.call_duration
     assert metadata.call_duration > metadata.subcall_duration
+    assert metadata.avg_load_duration > 0
+    assert metadata.avg_overhead_duration > 0
+
+    assert metadata == dumbo_fib.get_metadata(8)
+
+
+def test_dumbo_func_api_works(dumbo_fib_fixture):
+    assert not dumbo_fib.is_cached(8)
+    assert dumbo_fib.is_stale(8)
+
+    result = dumbo_fib(8)
+    dumbo.tag('test', result)
+    del result
+
+    assert dumbo_fib.is_cached(8)
+    assert not dumbo_fib.is_stale(8)
+
+    dumbo.flush_online_cache()
+
+    assert dumbo_fib.get_tag_name(8) == 'test'
+
+    assert not dumbo.get_cached_value_identities(False)
+    assert dumbo_fib.is_cached(8)
+    assert not dumbo_fib.is_stale(8)
+
+    dumbo_fib.forget(8)
+
+    assert not dumbo_fib.is_cached(8)
+    assert dumbo_fib.is_stale(8)
+
+
+def test_dumbo_value_api_works(dumbo_fib_fixture):
+    result = dumbo_fib(8)
+
+    assert not dumbo.is_stale(result)
+    assert dumbo.get_metadata(result)
+    assert not dumbo.get_tag_name(result)
+
+    dumbo.tag('test', result)
+
+    assert dumbo.get_tag_name(result) == 'test'
+    assert dumbo.get_tag_value('test') == result
+
+    dumbo.forget(result)
+
+    assert dumbo.is_stale(result)
 
 
 def test_dumbo_can_wrap_uninitialized():

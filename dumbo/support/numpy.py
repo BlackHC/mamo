@@ -5,6 +5,7 @@ import numpy as np
 import hashlib
 
 from dumbo.api_support import (
+    DBPickledValue,
     ExternallyCachedValue,
     ModuleExtension,
     ObjectSaver,
@@ -12,7 +13,6 @@ from dumbo.api_support import (
     CachedValue,
     MODULE_EXTENSIONS,
 )
-from dumbo.internal.db_stored_value import DBPickledValue
 
 np_types = (np.ndarray, np.record, np.matrix, np.recarray, np.chararray, np.generic, np.memmap)
 

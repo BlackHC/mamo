@@ -38,6 +38,12 @@ def get_tag_value(tag_name):
     return main.dumbo.get_tag_value(tag_name)
 
 
+def get_tag_name(value):
+    _require_dumbo()
+
+    return main.dumbo.get_tag_name(value)
+
+
 def get_external_value(unique_name):
     _ensure_dumbo_init()
 

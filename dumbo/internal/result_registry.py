@@ -49,6 +49,8 @@ class ResultRegistry(ValueProvider):
     def remove_vid(self, vid: ValueIdentity):
         assert isinstance(vid, ComputedValueIdentity)
 
+        self.persisted_store.remove_vid(vid)
+
         value = self.online_registry.resolve_value(vid)
         if value is None:
             return
@@ -56,7 +58,7 @@ class ResultRegistry(ValueProvider):
         self.values.discard(value)
         self.online_registry.remove_value(value)
 
-        self.persisted_store.remove_vid(vid)
+
 
     def remove_value(self, value: object):
         if not self.has_value(value):

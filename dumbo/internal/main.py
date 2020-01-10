@@ -170,7 +170,7 @@ class Dumbo:
                 for name, (input_vid, input_fingerprint) in fingerprint.cell.globals_load
             )
 
-    def is_cached(self, func, args, kwargs):
+    def is_cached_call(self, func, args, kwargs):
         fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
 
@@ -255,9 +255,10 @@ class Dumbo:
 
         wrapped_func.dumbo_unwrapped_func = func
         wrapped_func.is_stale = lambda *args, **kwargs: dumbo.is_stale_call(func, args, kwargs)
-        wrapped_func.is_cached = lambda *args, **kwargs: dumbo.is_cached(func, args, kwargs)
+        wrapped_func.is_cached = lambda *args, **kwargs: dumbo.is_cached_call(func, args, kwargs)
         wrapped_func.forget = lambda *args, **kwargs: dumbo.forget_call(func, args, kwargs)
         wrapped_func.get_metadata = lambda *args, **kwargs: dumbo.get_metadata_call(func, args, kwargs)
+        wrapped_func.get_tag_name = lambda *args, **kwargs: dumbo.get_tag_name_call(func, args, kwargs)
 
         # This method is a static method, so that dumbo does not need to be initialized.
         fid = None
@@ -317,6 +318,18 @@ class Dumbo:
                 raise ValueError("Value has not been registered previously!")
 
         self.persisted_store.tag(tag_name, vid)
+
+    def get_tag_name_call(self, func, args, kwargs) -> Optional[str]:
+        fid = self.function_registry.identify_function(func)
+        vid = self.identity_registry.identify_call(fid, args, kwargs)
+
+        return self.persisted_store.get_tag_name(vid)
+
+    def get_tag_name(self, value) -> Optional[str]:
+        vid = self._get_vid(value)
+        if not vid:
+            return None
+        return self.persisted_store.get_tag_name(vid)
 
     def get_tag_value(self, tag_name):
         # TODO: might have to expose has_tag etc?

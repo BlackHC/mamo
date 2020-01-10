@@ -3,3 +3,4 @@ source=dumbo/*
 omit=
     */tests/*
     setup.py
+    dumbo/internal/providers.py

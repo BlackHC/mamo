@@ -178,15 +178,14 @@ class PersistedStore:
                     del self.storage.vid_to_result_metadata[vid]
 
     def remove_vid(self, vid: ValueIdentity):
-        with self.transaction_manager:
-            value = self.storage.vid_to_cached_value.get(vid)
-            if value is not None:
-                # TODO: add test cases for unlinking!!!
-                value.unlink()
-
+        value = self.storage.vid_to_cached_value.get(vid)
+        if value is not None:
+            # TODO: add test cases for unlinking!!!
+            with self.transaction_manager:
                 del self.storage.vid_to_cached_value[vid]
                 del self.storage.vid_to_fingerprint[vid]
                 del self.storage.vid_to_result_metadata[vid]
+                value.unlink()
 
     def get_vids(self):
         return set(self.storage.vid_to_cached_value.keys())
@@ -223,6 +222,9 @@ class PersistedStore:
 
     def get_tag_vid(self, tag_name) -> Optional[ValueIdentity]:
         return self.storage.tag_to_vid.get_value(tag_name)
+
+    def get_tag_name(self, vid: ValueIdentity) -> Optional[str]:
+        return self.storage.tag_to_vid.get_key(vid)
 
     def has_vid(self, vid):
         return vid in self.storage.vid_to_cached_value

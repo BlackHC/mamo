@@ -9,9 +9,9 @@ from dumbo.api_support import (
     ObjectSaver,
     ExternallyCachedFilePath,
     CachedValue,
+    DBPickledValue,
     MODULE_EXTENSIONS,
 )
-from dumbo.internal.db_stored_value import DBPickledValue
 
 
 # TODO: does this all work for cuda tensors????
