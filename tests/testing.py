@@ -4,7 +4,6 @@ from typing import Optional
 from _pytest.fixtures import fixture
 
 from dumbo.internal import persisted_store, main
-from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.cached_values import DBPickledValue
 from dumbo.internal.identities import ValueIdentity
 
@@ -40,12 +39,6 @@ class DummyPersistedStore(persisted_store.PersistedStore):
         if vid in self.vid_to_cached_value:
             del self.vid_to_cached_value[vid]
             del self.vid_to_fingerprint[vid]
-
-    def update(self, vid, value: AnnotatedValue):
-        if value is None:
-            self.remove_vid(vid)
-        else:
-            self.add(vid, value.value, value.fingerprint)
 
     def get_fingerprint(self, vid):
         return self.vid_to_fingerprint.get(vid)

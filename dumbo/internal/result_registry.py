@@ -1,12 +1,10 @@
-from dumbo.internal.fingerprints import Fingerprint
+from dumbo.internal.fingerprints import Fingerprint, ResultFingerprint
 from dumbo.internal.common.id_set import IdSet
 from dumbo.internal.providers import ValueProvider
 from dumbo.internal.staleness_registry import StalenessRegistry
 from dumbo.internal.value_registries import WeakValueRegistry
 from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
-from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.persisted_store import PersistedStore
-from typing import Optional
 
 
 class ResultRegistry(ValueProvider):
@@ -32,8 +30,9 @@ class ResultRegistry(ValueProvider):
     def flush(self):
         self.values.clear()
 
-    def add(self, vid: ValueIdentity, value, fingerprint: Fingerprint):
+    def add(self, vid: ComputedValueIdentity, value, fingerprint: ResultFingerprint):
         assert isinstance(vid, ComputedValueIdentity)
+        assert isinstance(fingerprint, ResultFingerprint)
         assert value is not None
 
         existing_value = self.online_registry.resolve_value(vid)
@@ -66,13 +65,6 @@ class ResultRegistry(ValueProvider):
         self.persisted_store.remove_vid(self.identify_value(value))
         self.values.discard(value)
         self.online_registry.remove_value(value)
-
-    # TODO: remove this!! mainly tests need to be updated!
-    def update(self, vid: ValueIdentity, annotated_value: Optional[AnnotatedValue]):
-        if annotated_value is None:
-            self.remove_vid(vid)
-        else:
-            self.add(vid, annotated_value.value, annotated_value.fingerprint)
 
     # TODO: rename to something that makes clear it might be very expensive!!
     def resolve_value(self, vid: ComputedValueIdentity):

@@ -1,7 +1,6 @@
 from os import mkdir, listdir, path
 
 from dumbo.internal.identities import value_name_identity
-from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.persisted_store import PersistedStore
 
 from tests.testing import BoxedValue

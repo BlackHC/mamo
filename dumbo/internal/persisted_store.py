@@ -9,11 +9,10 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from transaction import TransactionManager
 
-from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.bimap import PersistentBimap
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
 from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ComputedValueIdentity, ValueIdentity
+from dumbo.internal.identities import ValueIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 
 MAX_DB_CACHED_VALUE_SIZE = 1024

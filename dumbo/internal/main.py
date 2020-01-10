@@ -11,7 +11,6 @@ from dumbo.internal.identities import (
     ComputedValueIdentity,
     ValueCallIdentity,
     ValueCellResultIdentity)
-from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.identity_registry import IdentityRegistry
 from dumbo.internal.function_registry import FunctionRegistry
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
