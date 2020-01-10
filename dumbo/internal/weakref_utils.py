@@ -132,26 +132,26 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         return iter(self.id_map_finalizer)
 
 
-class WrappedValueMutableMapping(Generic[KT, VT, T], MutableMapping[KT, VT]):
+class AbstractWrappedValueMutableMapping(Generic[KT, VT, T], MutableMapping[KT, VT]):
     data: Dict[KT, T]
 
     def __init__(self):
         self.data = {}
 
-    def _value_to_store(self, v: VT) -> T:
+    def value_to_store(self, v: VT) -> T:
         raise NotImplementedError()
 
-    def _store_to_value(self, v: T) -> VT:
+    def store_to_value(self, v: T) -> VT:
         raise NotImplementedError()
 
     def __setitem__(self, k: KT, v: VT) -> None:
-        self.data[k] = self._value_to_store(v)
+        self.data[k] = self.value_to_store(v)
 
     def __delitem__(self, v: KT) -> None:
         del self.data[v]
 
     def __getitem__(self, k: KT) -> VT:
-        return self._store_to_value(self.data[k])
+        return self.store_to_value(self.data[k])
 
     def __len__(self) -> int:
         return len(self.data)

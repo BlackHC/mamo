@@ -1,7 +1,10 @@
 import gc
 from dataclasses import dataclass
 
+import pytest
+
 from dumbo.internal import weakref_utils
+from dumbo.internal.weakref_utils import AbstractWrappedValueMutableMapping
 from tests.collection_testing import test_mutable_mapping
 from tests.collection_testing import test_mutable_set
 from tests.collection_testing.test_mutable_mapping import MutableMappingTests
@@ -47,6 +50,12 @@ def test_id_map_finalizer():
 
     id_map_finalizer.register(a, custom_handler)
 
+    with pytest.raises(ValueError):
+        id_map_finalizer.register(a, None)
+
+    # Don't throw and don't do anything when we add a value that can't be weakref'ed.
+    id_map_finalizer.register(1, None)
+
     assert set(id_map_finalizer) == {a}
 
     id_map_finalizer.release(a)
@@ -64,6 +73,7 @@ def test_id_map_finalizer():
     gc.collect()
 
     assert a_has_been_finalized_counter == 1
+
 
 
 def test_weak_key_id_map():
@@ -106,6 +116,21 @@ class TestWeakKeyIdMap(MutableMappingTests):
     @staticmethod
     def get_key(i):
         return BoxedValue(i)
+
+
+class TestWrappedValueMutableMapping(MutableMappingTests):
+    class WrappedValueMutableMappingInstance(AbstractWrappedValueMutableMapping):
+        @staticmethod
+        def value_to_store(v):
+            return v,
+
+        @staticmethod
+        def store_to_value(v):
+            return v[0]
+
+    @staticmethod
+    def create_mutable_mapping():
+        return TestWrappedValueMutableMapping.WrappedValueMutableMappingInstance()
 
 
 class TestWeakIdSet(MutableSetTests):
