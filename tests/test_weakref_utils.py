@@ -2,6 +2,10 @@ import gc
 from dataclasses import dataclass
 
 from dumbo.internal import weakref_utils
+from tests.collection_testing import test_mutable_mapping
+from tests.collection_testing import test_mutable_set
+from tests.collection_testing.test_mutable_mapping import MutableMappingTests
+from tests.collection_testing.test_mutable_set import MutableSetTests
 
 
 class DummySupportsWeakRefs:
@@ -89,3 +93,24 @@ def test_weak_key_id_map():
     gc.collect()
 
     assert not weak_key_id_map
+
+
+@dataclass
+class BoxedValue:
+    i: int
+
+
+class TestWeakKeyIdMap(MutableMappingTests):
+    mutable_mapping = weakref_utils.WeakKeyIdMap
+
+    @staticmethod
+    def get_key(i):
+        return BoxedValue(i)
+
+
+class TestWeakIdSet(MutableSetTests):
+    mutable_set = weakref_utils.WeakIdSet
+
+    @staticmethod
+    def get_element(i):
+        return BoxedValue(i)

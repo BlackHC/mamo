@@ -6,7 +6,7 @@ KT_co = TypeVar('KT_co', covariant=True)  # Value type covariant containers.
 VT_co = TypeVar('VT_co', covariant=True)  # Value type covariant containers.
 
 
-class KeyIdMap(MutableMapping[KT, VT]):
+class KeyIdDict(MutableMapping[KT, VT]):
     id_key_value: Dict[int, Tuple[KT, VT]]
 
     def __init__(self):
@@ -26,4 +26,4 @@ class KeyIdMap(MutableMapping[KT, VT]):
 
     def __iter__(self) -> Iterator[KT]:
         for key, value in self.id_key_value.values():
-            yield value
+            yield key

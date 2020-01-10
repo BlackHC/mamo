@@ -4,7 +4,7 @@ from typing import MutableMapping, Set
 
 from dumbo.internal.bimap import MappingBimap
 from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.common.key_id_set import KeyIdMap
+from dumbo.internal.common.key_id_dict import KeyIdDict
 from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
 from dumbo.internal.providers import ValueProvider
 from dumbo.internal.staleness_registry import StalenessRegistry
@@ -57,8 +57,8 @@ class AbstractValueRegistry(ValueProvider):
 
 class ValueRegistry(AbstractValueRegistry):
     def __init__(self, staleness_registry: StalenessRegistry):
-        vid_value_bimap = MappingBimap({}, KeyIdMap())
-        value_to_fingerprint = KeyIdMap()
+        vid_value_bimap = MappingBimap({}, KeyIdDict())
+        value_to_fingerprint = KeyIdDict()
         super().__init__(vid_value_bimap, value_to_fingerprint, staleness_registry)
 
 

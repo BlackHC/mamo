@@ -8,7 +8,7 @@ from dumbo.internal.result_registry import ResultRegistry
 from dumbo.internal.staleness_registry import StalenessRegistry
 from dumbo.internal.value_provider_mediator import ValueProviderMediator
 from dumbo.internal.value_registries import ValueRegistry
-from .testing import DummyPersistedStore, BoxedValue
+from tests.testing import DummyPersistedStore, BoxedValue
 
 
 # TODO: gotta check fingerprints, too!

@@ -2,7 +2,7 @@ from dumbo.internal import main
 from dumbo.internal import reflection
 
 # noinspection PyUnresolvedReferences
-from .testing import dumbo_fixture
+from tests.testing import dumbo_fixture
 
 
 # TODO: this should be a unit test of a pure FingerprintRegistry!

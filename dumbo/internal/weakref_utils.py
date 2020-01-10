@@ -80,7 +80,9 @@ class WeakIdSet(MutableSet[T]):
         self.id_map_finalizer = IdMapFinalizer()
 
     def add(self, x: T) -> None:
-        self.id_map_finalizer.register(x, None)
+        assert supports_weakrefs(x)
+        if x not in self.id_map_finalizer:
+            self.id_map_finalizer.register(x, None)
 
     def discard(self, x: T) -> None:
         self.id_map_finalizer.release(x)
@@ -107,6 +109,8 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         del self.id_map_to_value[id_value]
 
     def __setitem__(self, k: KT, v: VT) -> None:
+        assert supports_weakrefs(k)
+
         id_k = id(k)
         if id_k not in self.id_map_to_value:
             self.id_map_finalizer.register(k, self._release)
