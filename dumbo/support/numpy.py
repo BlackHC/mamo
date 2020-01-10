@@ -1,10 +1,10 @@
+import os
 from typing import Optional
 
 import numpy as np
 import hashlib
 
 from dumbo.api_support import (
-    DBPickledValue,
     ExternallyCachedValue,
     ModuleExtension,
     ObjectSaver,
@@ -12,6 +12,7 @@ from dumbo.api_support import (
     CachedValue,
     MODULE_EXTENSIONS,
 )
+from dumbo.internal.db_stored_value import DBPickledValue
 
 np_types = (np.ndarray, np.record, np.matrix, np.recarray, np.chararray, np.generic, np.memmap)
 
@@ -34,7 +35,7 @@ class NumpyObjectSaver(ObjectSaver):
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
         if external_path_builder is None:
-            return DBPickledValue(self.value)
+            return DBPickledValue.cache_value(self.value)
 
         shape_info = "_".join(map(str, self.value.shape))
         external_path = external_path_builder.build(shape_info, "npy")

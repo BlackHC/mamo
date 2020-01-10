@@ -1,3 +1,4 @@
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
@@ -11,7 +12,7 @@ T = TypeVar("T")
 MISSING_DIGEST = object()
 
 
-class ObjectSaver:
+class ObjectSaver(ABC):
     def __init__(self, value):
         self.value = value
         self.digest = MISSING_DIGEST

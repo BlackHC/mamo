@@ -57,6 +57,8 @@ def test_persisted_store_get_metadata_works():
     result_metadata = store.get_result_metadata(vid)
     assert result_metadata
     assert result_metadata.result_size == 54
+    assert result_metadata.stored_size == 54
+
 
 def test_persisted_store_persists():
     with tempfile.TemporaryDirectory() as temp_storage_dir:

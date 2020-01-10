@@ -5,7 +5,8 @@ from dumbo.internal.weakref_utils import ObjectProxy
 
 from typing import Optional, Tuple
 
-from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue, DBPickledValue
+from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue
+from dumbo.internal.db_stored_value import DBPickledValue
 from dumbo.internal.module_extension import ModuleExtension, ObjectSaver
 
 import hashlib
@@ -26,6 +27,9 @@ class CachedTuple(CachedValue):
         for item in self.values:
             item.unlink()
 
+    def get_stored_size(self) -> int:
+        return sum(item.get_stored_size() for item in self.values)
+
 
 class DefaultObjectSaver(ObjectSaver):
     def __init__(self, value, pickled_bytes):
@@ -44,10 +48,12 @@ class DefaultObjectSaver(ObjectSaver):
             with open(external_path, "bw") as external_file:
                 external_file.write(self.pickled_bytes)
 
-            return ExternallyCachedValue(external_path)
+            cached_value = ExternallyCachedValue(external_path)
+        else:
+            cached_value = DBPickledValue(self.pickled_bytes)
 
         # TODO: catch transactions error for objects that cannot be pickled here?
-        return DBPickledValue(self.value)
+        return cached_value
 
 
 class DefaultTupleObjectSaver(ObjectSaver):
@@ -65,12 +71,12 @@ class DefaultTupleObjectSaver(ObjectSaver):
         return hash_method.digest()
 
     def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
-        return CachedTuple(
-            tuple(
-                object_saver.cache_value(ExternallyCachedFilePath.for_tuple_item(external_path_builder, i))
-                for i, object_saver in enumerate(self.object_savers)
-            )
-        )
+        cached_items = tuple(
+            object_saver.cache_value(ExternallyCachedFilePath.for_tuple_item(external_path_builder, i))
+            for i, object_saver in enumerate(self.object_savers))
+        if any(item is None for item in cached_items):
+            return None
+        return CachedTuple(cached_items)
 
 
 class DefaultModuleExtension(ModuleExtension):

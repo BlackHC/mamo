@@ -4,7 +4,7 @@ from typing import Optional
 from _pytest.fixtures import fixture
 
 from dumbo.internal import persisted_store, main
-from dumbo.internal.cached_values import DBPickledValue
+from dumbo.internal.db_stored_value import DBPickledValue
 from dumbo.internal.identities import ValueIdentity
 
 

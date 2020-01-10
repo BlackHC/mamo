@@ -46,6 +46,13 @@ class DumboPersistedCacheStorage(Persistent):
         return f"{drawn_external_cache_id:010}"
 
 
+@dataclass
+class CacheOperationResult:
+    cached_value: CachedValue
+    result_size: int
+    stored_size: int
+
+
 # TODO: to repr method
 @dataclass
 class PersistedStore:
@@ -102,8 +109,8 @@ class PersistedStore:
         return self.storage.get_new_external_id()
 
     def try_create_cached_value(
-            self, vid: ValueIdentity, value: object, result_metadata: ResultMetadata
-    ) -> Optional[CachedValue]:
+            self, vid: ValueIdentity, value: object
+    ) -> Optional[CacheOperationResult]:
         assert value is not None
         object_saver = MODULE_EXTENSIONS.get_object_saver(value)
         if not object_saver:
@@ -114,8 +121,6 @@ class PersistedStore:
         if estimated_size is None:
             # TODO: log?
             return None
-
-        result_metadata.result_size = estimated_size
 
         external_path_builder = None
         # If we exceed a reasonable size, we don't store the result in the DB.
@@ -130,7 +135,8 @@ class PersistedStore:
             # TODO: log?
             return None
 
-        return cached_value
+        stored_size = cached_value.get_stored_size()
+        return CacheOperationResult(cached_value, estimated_size, stored_size)
 
     def add(self, vid: ValueIdentity, value: object, fingerprint: Fingerprint):
         assert value is not None
@@ -151,13 +157,12 @@ class PersistedStore:
             # assert isinstance(value.value, ObjectProxy)
             # value = dataclasses.replace(value, value=value.value.__subject__)
 
-            result_metadata = ResultMetadata()
-
-            cached_value = self.try_create_cached_value(vid, value, result_metadata)
-            if cached_value:
-                self.storage.vid_to_cached_value[vid] = cached_value
+            result = self.try_create_cached_value(vid, value)
+            if result.cached_value:
+                self.storage.vid_to_cached_value[vid] = result.cached_value
                 self.storage.vid_to_fingerprint[vid] = fingerprint
-                self.storage.vid_to_result_metadata[vid] = result_metadata
+                self.storage.vid_to_result_metadata[vid] = ResultMetadata(result_size=result.result_size,
+                                                                          stored_size=result.stored_size)
             else:
                 if existing_cached_value:
                     del self.storage.vid_to_cached_value[vid]

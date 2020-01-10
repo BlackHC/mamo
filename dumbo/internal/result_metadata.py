@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class ResultMetadata:
-    result_size: int = 0
-    #stored_size: int
+    result_size: int
+    stored_size: int
 
     #total_load_duration: float = 0
     #save_duration: float = 0
