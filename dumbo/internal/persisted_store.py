@@ -12,6 +12,7 @@ from transaction import TransactionManager
 from dumbo.internal.annotated_value import AnnotatedValue
 from dumbo.internal.bimap import PersistentBimap
 from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
+from dumbo.internal.fingerprints import Fingerprint
 from dumbo.internal.identities import ComputedValueIdentity, ValueIdentity
 from dumbo.internal.module_extension import MODULE_EXTENSIONS
 
@@ -28,10 +29,12 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
 class DumboPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: PersistentMapping
+    vid_to_fingerprint: PersistentMapping
     tag_to_vid: PersistentBimap[str, ValueIdentity]
 
     def __init__(self):
         self.vid_to_cached_value = PersistentMapping()
+        self.vid_to_fingerprint = PersistentMapping()
         self.tag_to_vid = PersistentBimap()
         self.external_cache_id = 0
 
@@ -97,10 +100,11 @@ class PersistedStore:
         return self.storage.get_new_external_id()
 
     def try_create_cached_value(
-        self, vid: ComputedValueIdentity, stored_result: AnnotatedValue
-    ) -> Optional[AnnotatedValue[CachedValue]]:
-        object_saver = MODULE_EXTENSIONS.get_object_saver(stored_result.value)
-        if object_saver is None:
+        self, vid: ValueIdentity, value: object
+    ) -> Optional[CachedValue]:
+        assert value is not None
+        object_saver = MODULE_EXTENSIONS.get_object_saver(value)
+        if not object_saver:
             # TODO: log?
             return None
 
@@ -118,48 +122,68 @@ class PersistedStore:
             )
 
         cached_value = object_saver.cache_value(external_path_builder)
-        if cached_value is None:
+        if not cached_value:
             # TODO: log?
             return None
 
-        return AnnotatedValue(cached_value, stored_result.fingerprint)
+        return cached_value
 
-    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedValue]):
+    def add(self, vid: ValueIdentity, value: object, fingerprint: Fingerprint):
+        assert value is not None
+
         with self.transaction_manager:
             existing_cached_value = self.storage.vid_to_cached_value.get(vid)
-            if existing_cached_value is not None:
+            if existing_cached_value:
                 # assert isinstance(existing_cached_value, CachedValue)
                 # TODO: add test cases for unlinking!!!
-                existing_cached_value.value.unlink()
+                existing_cached_value.unlink()
 
-            if value is None:
-                del self.storage.vid_to_cached_value[vid]
+            # TODO: logic to decide whether to store the value at all or not depending
+            # on computational budget.
+
+            # TODO: this is currently holding object proxies sometimes
+            # Which makes weakref collection hard!
+            # # TODO: ugly: need to unwrap object proxy, fix this!
+            # assert isinstance(value.value, ObjectProxy)
+            # value = dataclasses.replace(value, value=value.value.__subject__)
+
+            cached_value = self.try_create_cached_value(vid, value)
+            if cached_value:
+                self.storage.vid_to_cached_value[vid] = cached_value
+                self.storage.vid_to_fingerprint[vid] = fingerprint
             else:
-                # TODO: logic to decide whether to store the value at all or not depending
-                # on computational budget.
+                if existing_cached_value:
+                    del self.storage.vid_to_cached_value[vid]
+                    del self.storage.vid_to_fingerprint[vid]
 
-                # TODO: this is currently holding object proxies sometimes
-                # Which makes weakref collection hard!
-                # # TODO: ugly: need to unwrap object proxy, fix this!
-                # assert isinstance(value.value, ObjectProxy)
-                # value = dataclasses.replace(value, value=value.value.__subject__)
+    def remove_vid(self, vid: ValueIdentity):
+        with self.transaction_manager:
+            value = self.storage.vid_to_cached_value.get(vid)
+            if value is not None:
+                # TODO: add test cases for unlinking!!!
+                value.unlink()
 
-                cached_value = self.try_create_cached_value(vid, value)
-                if cached_value is not None:
-                    self.storage.vid_to_cached_value[vid] = cached_value
-                else:
-                    if existing_cached_value:
-                        del self.storage.vid_to_cached_value[vid]
+                del self.storage.vid_to_cached_value[vid]
+                del self.storage.vid_to_fingerprint[vid]
+
+    def update(self, vid: ComputedValueIdentity, value: Optional[AnnotatedValue]):
+        if value is None:
+            self.remove_vid(vid)
+        else:
+            self.add(vid, value.value, value.fingerprint)
 
     def get_vids(self):
         return self.storage.vid_to_cached_value.keys()
 
     def get_cached_value(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue[CachedValue]]:
-        return self.storage.vid_to_cached_value.get(vid)
+        annotated_value = AnnotatedValue(self.storage.vid_to_cached_value.get(vid), self.storage.vid_to_fingerprint.get(vid))
+        if annotated_value.value is None:
+            return None
+        return annotated_value
 
     def get_stored_result(self, vid: ComputedValueIdentity) -> Optional[AnnotatedValue]:
         cached_value = self.get_cached_value(vid)
-        if cached_value is None:
+        if not cached_value:
             return None
 
         # Load value

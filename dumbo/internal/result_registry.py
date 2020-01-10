@@ -45,8 +45,7 @@ class ResultRegistry(ValueProvider):
 
         self.values.add(value)
         self.online_registry.add(vid, value, fingerprint)
-
-        self.persisted_store.update(vid, AnnotatedValue(value, fingerprint))
+        self.persisted_store.add(vid, value, fingerprint)
 
     def remove_vid(self, vid: ValueIdentity):
         assert isinstance(vid, ComputedValueIdentity)
@@ -58,13 +57,13 @@ class ResultRegistry(ValueProvider):
         self.values.discard(value)
         self.online_registry.remove_value(value)
 
-        self.persisted_store.update(vid, None)
+        self.persisted_store.remove_vid(vid)
 
     def remove_value(self, value: object):
         if not self.has_value(value):
             return
 
-        self.persisted_store.update(self.identify_value(value), None)
+        self.persisted_store.remove_vid(self.identify_value(value))
         self.values.discard(value)
         self.online_registry.remove_value(value)
 

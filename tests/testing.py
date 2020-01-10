@@ -13,22 +13,40 @@ from dumbo.internal.identities import ValueIdentity
 class DummyPersistedStore(persisted_store.PersistedStore):
     external_cache_id: int
     vid_to_cached_value: dict
+    vid_to_fingerprint: dict
     tag_to_vid: dict
 
     # noinspection PyMissingConstructor
     def __init__(self):
         self.external_cache_id = 0
         self.vid_to_cached_value = {}
+        self.vid_to_fingerprint = {}
         self.tag_to_vid = {}
 
-    def try_create_cached_value(self, vid, stored_result):
-        return AnnotatedValue(DBPickledValue(stored_result), stored_result.fingerprint)
+    def try_create_cached_value(self, vid, value):
+        return DBPickledValue(value)
 
-    def update(self, vid, value):
-        self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value) if value is not None else None
+    def add(self, vid, value: object, fingerprint):
+        self.vid_to_cached_value[vid] = self.try_create_cached_value(vid, value)
+        self.vid_to_fingerprint[vid] = fingerprint
+
+    def remove_vid(self, vid):
+        if vid in self.vid_to_cached_value:
+            del self.vid_to_cached_value[vid]
+            del self.vid_to_fingerprint[vid]
+
+    def update(self, vid, value: AnnotatedValue):
+        if value is None:
+            self.remove_vid(vid)
+        else:
+            self.add(vid, value.value, value.fingerprint)
 
     def get_cached_value(self, vid):
-        return self.vid_to_cached_value.get(vid)
+        value = self.vid_to_cached_value.get(vid)
+        if not value:
+            return None
+        fingerprint = self.vid_to_fingerprint.get[vid]
+        return AnnotatedValue(value, fingerprint)
 
     def tag(self, tag_name: str, vid: ValueIdentity):
         self.tag_to_vid[tag_name] = vid
