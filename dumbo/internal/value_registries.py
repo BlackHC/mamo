@@ -29,18 +29,27 @@ class AbstractValueRegistry(ValueProvider):
     def resolve_fingerprint(self, vid: ValueIdentity):
         return self.fingerprint_value(self.resolve_value(vid))
 
-    def register(self, vid: ComputedValueIdentity, value: object, fingerprint: Fingerprint):
+    def add(self, vid: ValueIdentity, value, fingerprint: Fingerprint):
+        assert value is not None
+
         if vid in self.vid_value_bimap:
             existing_value = self.vid_value_bimap.get_value(vid)
             self.staleness_registry.mark_stale(existing_value)
             del self.value_fingerprint_map[existing_value]
 
         self.vid_value_bimap.update(vid, value)
-        if value is not None:
-            self.value_fingerprint_map[value] = fingerprint
-            self.staleness_registry.mark_used(value)
+        self.value_fingerprint_map[value] = fingerprint
+        self.staleness_registry.mark_used(value)
 
-    def invalidate(self, value: object):
+    def remove_vid(self, vid: ValueIdentity):
+        value = self.vid_value_bimap.get_value(vid)
+        if value is not None:
+            self.remove_value(value)
+
+    def remove_value(self, value: object):
+        if not self.has_value(value):
+            return
+
         self.staleness_registry.mark_stale(value)
         self.vid_value_bimap.del_value(value)
         del self.value_fingerprint_map[value]

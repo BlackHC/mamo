@@ -75,14 +75,14 @@ def test_doc_updating_same_value_throws():
     vid = create_call_vid(1)
     fingerprint = ResultFingerprint()
     value = BoxedValue(5)
-    result_registry.register(vid, value, fingerprint)
+    result_registry.add(vid, value, fingerprint)
 
     assert result_registry.resolve_value(vid) is value
     assert result_registry.identify_value(value) == vid
 
     vid2 = create_call_vid(2)
     with pytest.raises(AttributeError):
-        result_registry.register(vid2, value, fingerprint)
+        result_registry.add(vid2, value, fingerprint)
 
 
 def test_doc_updating_none_works():

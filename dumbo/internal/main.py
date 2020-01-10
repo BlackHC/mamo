@@ -174,13 +174,13 @@ class Dumbo:
         fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
 
-        self.value_provider_mediator.register(vid, None, None)
+        self.value_provider_mediator.remove_vid(vid)
 
     def forget(self, value):
         if not self.value_provider_mediator.has_value(value):
             # TODO: throw or log
             return
-        self.value_provider_mediator.invalidate(value)
+        self.value_provider_mediator.remove_value(value)
 
     def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
         # TODO: could directly ask persisted_cache
@@ -209,7 +209,7 @@ class Dumbo:
             if dumbo._shall_execute(vid, call_fingerprint):
                 result = func(*args, **kwargs)
                 wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                dumbo.result_registry.update(vid, AnnotatedValue(wrapped_result, call_fingerprint))
+                dumbo.value_provider_mediator.add(vid, wrapped_result, call_fingerprint)
 
                 return wrapped_result
 
@@ -262,8 +262,8 @@ class Dumbo:
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.result_registry.update(result_vids[name],
-                                             AnnotatedValue(user_ns[name], result_fingerprints[name]))
+                dumbo.value_provider_mediator.add(result_vids[name],
+                        user_ns[name], result_fingerprints[name])
         else:
             for name in outputs:
                 vid = result_vids[name]
@@ -300,7 +300,10 @@ class Dumbo:
 
     def register_external_value(self, unique_name, value):
         vid = value_name_identity(unique_name)
-        self.value_provider_mediator.register(vid, value, vid.fingerprint if value is not None else None)
+        if value is None:
+            self.value_provider_mediator.remove_vid(vid)
+        else:
+            self.value_provider_mediator.add(vid, value, vid.fingerprint)
         # TODO: add a test!
 
         return value

@@ -38,11 +38,13 @@ class ValueProvider(ValueOracle, ABC):
     def resolve_fingerprint(self, vid: ValueIdentity) -> Fingerprint:
         raise NotImplementedError()
 
-    def register(self, vid: ValueIdentity, value, fingerprint: Fingerprint) -> NoReturn:
+    def add(self, vid: ValueIdentity, value, fingerprint: Fingerprint) -> NoReturn:
         raise NotImplementedError()
 
-    # TODO: remove this again?
-    def invalidate(self, value: object) -> NoReturn:
+    def remove_vid(self, vid: ValueIdentity) -> NoReturn:
+        raise NotImplementedError()
+
+    def remove_value(self, value: object) -> NoReturn:
         raise NotImplementedError()
 
     def has_vid(self, vid: ValueIdentity) -> bool:

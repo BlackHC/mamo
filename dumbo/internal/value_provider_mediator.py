@@ -40,7 +40,7 @@ class ValueProviderMediator(ValueProvider):
             return self.result_provider.resolve_fingerprint(vid)
         return self.external_value_provider.resolve_fingerprint(vid)
 
-    def register(self, vid: ValueIdentity, value: object, fingerprint: Optional[Fingerprint]):
+    def add(self, vid: ValueIdentity, value, fingerprint: Fingerprint):
         if self.has_value(value):
             existing_vid = self.identify_value(value)
             assert existing_vid is not None
@@ -55,15 +55,19 @@ class ValueProviderMediator(ValueProvider):
         # additional error checking here.
 
         if isinstance(vid, ComputedValueIdentity):
-            return self.result_provider.register(vid, value, fingerprint)
+            return self.result_provider.add(vid, value, fingerprint)
         else:
-            return self.external_value_provider.register(vid, value, fingerprint)
+            return self.external_value_provider.add(vid, value, fingerprint)
 
-    def invalidate(self, value: object):
-        if self.external_value_provider.has_value(value):
-            self.external_value_provider.invalidate(value)
-        elif self.result_provider.has_value(value):
-            self.result_provider.invalidate(value)
+    def remove_vid(self, vid: ValueIdentity):
+        if isinstance(vid, ComputedValueIdentity):
+            return self.result_provider.remove_vid(vid)
+        else:
+            return self.external_value_provider.remove_vid(vid)
+
+    def remove_value(self, value):
+        self.result_provider.remove_value(value)
+        self.external_value_provider.remove_value(value)
 
     def has_vid(self, vid: ValueIdentity):
         return self.external_value_provider.has_vid(vid) or self.result_provider.has_vid(vid)
