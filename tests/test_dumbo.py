@@ -62,16 +62,16 @@ def test_dumbo_fib(dumbo_fib_fixture):
 
 
 def test_dumbo_fib_metadata(dumbo_fib_fixture):
-    result = dumbo_fib(8)
-    del result
+    i = 30
+    dumbo_fib(i)
     dumbo.flush_online_cache()
 
-    dumbo_fib(8)
-    dumbo_fib(8)
-    dumbo_fib(8)
+    dumbo_fib(i)
+    dumbo_fib(i)
+    dumbo_fib(i)
     dumbo.flush_online_cache()
 
-    result = dumbo_fib(8)
+    result = dumbo_fib(i)
 
     metadata = dumbo.get_metadata(result)
 
@@ -84,8 +84,11 @@ def test_dumbo_fib_metadata(dumbo_fib_fixture):
     assert metadata.call_duration > metadata.subcall_duration
     assert metadata.avg_load_duration > 0
     assert metadata.avg_overhead_duration > 0
+    assert metadata.avg_total_duration > 0
+    assert metadata.nodumbo_call_duration > metadata.avg_total_duration
+    assert metadata.estimated_saved_time > 0
 
-    assert metadata == dumbo_fib.get_metadata(8)
+    assert metadata == dumbo_fib.get_metadata(i)
 
 
 def test_dumbo_func_api_works(dumbo_fib_fixture):

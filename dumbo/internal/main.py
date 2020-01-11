@@ -72,7 +72,8 @@ class Dumbo:
 
     re_execution_policy: ReExecutionPolicy
 
-    _subcall_duration: List
+    _call_duration_stack: List
+    _nodumbo_call_duration_stack: List
 
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
@@ -95,6 +96,7 @@ class Dumbo:
         self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
 
         self._call_duration_stack = [0.0]
+        self._nodumbo_call_duration_stack = [0.0]
 
     @property
     def deep_fingerprint_source_prefix(self):
@@ -233,6 +235,7 @@ class Dumbo:
 
                 if dumbo._shall_execute(vid, call_fingerprint):
                     dumbo._call_duration_stack.append(0.)
+                    dumbo._nodumbo_call_duration_stack.append(0.)
                     with StopwatchContext() as call_stopwatch:
                         result = func(*args, **kwargs)
                     wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
@@ -241,6 +244,7 @@ class Dumbo:
                     result_metadata = dumbo.persisted_store.get_result_metadata(vid)
                     result_metadata.call_duration = call_stopwatch.elapsed_time
                     result_metadata.subcall_duration = dumbo._call_duration_stack.pop()
+                    result_metadata.estimated_nodumbo_call_duration = result_metadata.call_duration - result_metadata.subcall_duration + dumbo._nodumbo_call_duration_stack.pop()
                 else:
                     wrapped_result = dumbo._get_value(vid)
                     if wrapped_result is None:
@@ -251,6 +255,7 @@ class Dumbo:
 
             result_metadata.total_durations += total_stopwatch.elapsed_time
             dumbo._call_duration_stack[-1] += total_stopwatch.elapsed_time
+            dumbo._nodumbo_call_duration_stack[-1] += result_metadata.estimated_nodumbo_call_duration
             return wrapped_result
 
         wrapped_func.dumbo_unwrapped_func = func
@@ -298,7 +303,7 @@ class Dumbo:
 
             for name in outputs:
                 dumbo.value_provider_mediator.add(result_vids[name],
-                        user_ns[name], result_fingerprints[name])
+                                                  user_ns[name], result_fingerprints[name])
         else:
             for name in outputs:
                 vid = result_vids[name]
