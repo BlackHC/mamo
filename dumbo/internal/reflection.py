@@ -197,6 +197,9 @@ def get_func_deps(func: FunctionType) -> FunctionDependencies:
 
 def is_func_local(func, local_prefix: Optional[str]):
     module = inspect.getmodule(func)
+    if module is None:
+        # TODO: log? this is weird
+        return True
 
     # Functions in the main module are local by nature (so we don't need a local_prefix to establish that).
     if module.__name__ == "__main__":
@@ -213,5 +216,11 @@ def is_func_local(func, local_prefix: Optional[str]):
 
 
 def is_func_builtin(func):
+    if inspect.isbuiltin(func):
+        return True
+    if inspect.ismemberdescriptor(func):
+        return True
+    if inspect.ismethoddescriptor(func):
+        return True
     module = inspect.getmodule(func)
     return module is builtins

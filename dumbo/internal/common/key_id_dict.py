@@ -27,3 +27,6 @@ class KeyIdDict(MutableMapping[KT, VT]):
     def __iter__(self) -> Iterator[KT]:
         for key, value in self.id_key_value.values():
             yield key
+
+    def __repr__(self):
+        return f"KeyIdDict{{{', '.join(map(lambda key_value: f'{repr(key_value[0])}:{repr(key_value[1])}', self.id_key_value.values()))}}}"

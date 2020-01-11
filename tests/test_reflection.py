@@ -109,3 +109,25 @@ def test_get_func_deps_ignores_calls_from_changed_globals():
     # Removes loads of globals that are also stored. (Conservative)
     assert deps == FunctionDependencies(global_loads=frozenset({('reflection', 'dis')}),
                                         global_stores=frozenset({'global_variable'}), func_calls=frozenset())
+
+
+def test_isbuiltin():
+    assert reflection.is_func_builtin(print)
+    assert reflection.is_func_builtin(str)
+    assert reflection.is_func_builtin("a".capitalize)
+    assert reflection.is_func_builtin(str.capitalize)
+    assert reflection.is_func_builtin(object.__init__)
+    assert reflection.is_func_builtin(type(int))
+
+    class LocalClass:
+        @staticmethod
+        def staticmethod():
+            pass
+
+    def local_func():
+        pass
+
+    assert reflection.is_func_builtin(LocalClass.__init__)
+
+    assert not reflection.is_func_builtin(local_func)
+    assert not reflection.is_func_builtin(LocalClass.staticmethod)

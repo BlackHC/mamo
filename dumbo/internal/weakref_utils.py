@@ -96,6 +96,9 @@ class WeakIdSet(MutableSet[T]):
     def __iter__(self) -> Iterator[T]:
         return iter(self.id_map_finalizer)
 
+    def __repr__(self):
+        return f"WeakIdSet{{{ ', '.join(map(repr, self))}}}"
+
 
 class WeakKeyIdMap(MutableMapping[KT, VT]):
     id_map_to_value: Dict[int, VT]
@@ -130,6 +133,9 @@ class WeakKeyIdMap(MutableMapping[KT, VT]):
         # TODO: add a test that shows that this is necessary to avoid deletions
         # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
         return iter(self.id_map_finalizer)
+
+    def __repr__(self):
+        return f"KeyIdDict{{{', '.join(map(lambda key: f'{repr(key)}:{repr(self[key])}', self))}}}"
 
 
 class AbstractWrappedValueMutableMapping(Generic[KT, VT, T], MutableMapping[KT, VT]):

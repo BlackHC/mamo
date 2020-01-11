@@ -30,4 +30,7 @@ class IdSet(MutableSet[T]):
     def __iter__(self) -> Iterator[T_co]:
         return iter(self.id_value.values())
 
+    def __repr__(self):
+        return f"IdSet{{{ ', '.join(map(repr, self))}}}"
+
 

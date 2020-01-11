@@ -1,3 +1,4 @@
+import inspect
 from types import CodeType, FunctionType
 from typing import Optional, Set, Dict, MutableMapping
 from weakref import WeakKeyDictionary
@@ -173,28 +174,41 @@ class FingerprintRegistry(FingerprintProvider):
         finally:
             self.deep_fingerprint_stack.remove(code_object)
 
-    def _get_function_fingerprint(self, func: FunctionType, allow_deep=True) -> Optional[FunctionFingerprint]:
-        # TODO: more tests? code review?
-        if not isinstance(func, FunctionType):
-            assert callable(func), func
-            if hasattr(func, '__call__'):
-                func = func.__call__
-            else:
-                # log and fail softly?
-                raise NotImplementedError(f'Missing support for fingerprinting callable {func}!')
-
-        if func is None:
-            func_fingerprint = FunctionFingerprint(None)
-        elif reflection.is_func_builtin(func):
-            func_fingerprint = FunctionFingerprint(func.__qualname__)
+    def _get_function_fingerprint(self, callee, allow_deep=True) -> Optional[FunctionFingerprint]:
+        # TODO: necessary?
+        if callee is None:
+            return None
+        elif reflection.is_func_builtin(callee):
+            func_fingerprint = FunctionFingerprint(callee.__qualname__)
         else:
-            # Unwrap special functions.
-            if hasattr(func, "dumbo_unwrapped_func"):
-                func = func.dumbo_unwrapped_func
-
-            if allow_deep and reflection.is_func_local(func, self.deep_fingerprint_source_prefix):
-                func_fingerprint = self._get_deep_fingerprint(func.__code__, func.__globals__)
+            # TODO: more tests? code review?
+            if isinstance(callee, FunctionType):
+                func = callee
             else:
-                func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(func))
+                assert callable(callee), callee
+                # Needs tests!
+                if isinstance(callee, type):
+                    sub_callable = callee.__init__
+                elif hasattr(callee, '__func__'):
+                    sub_callable = callee.__func__
+                elif hasattr(callee, '__call__'):
+                    sub_callable = callee.__call__
+                else:
+                    # log and fail softly?
+                    raise NotImplementedError(f'Missing support for fingerprinting callable {callee}!')
+                return self._get_function_fingerprint(sub_callable, allow_deep=allow_deep)
+
+            if not hasattr(callee, '__code__') or not hasattr(callee, '__globals__'):
+                import types
+                isbuiltin = inspect.isbuiltin(callee)
+
+            # Unwrap special functions.
+            if hasattr(callee, "dumbo_unwrapped_func"):
+                callee = callee.dumbo_unwrapped_func
+
+            if allow_deep and reflection.is_func_local(callee, self.deep_fingerprint_source_prefix):
+                func_fingerprint = self._get_deep_fingerprint(callee.__code__, callee.__globals__)
+            else:
+                func_fingerprint = FunctionFingerprint(reflection.get_func_fingerprint(callee))
 
         return func_fingerprint
