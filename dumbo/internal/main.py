@@ -277,7 +277,7 @@ class Dumbo:
         function_module = ast.parse("def cell_function():\n  pass")
         cell_module = ast.parse(cell_code)
         function_module.body[0].body = cell_module.body
-        compiled_function = compile(function_module, "cell", "exec")
+        compiled_function = compile(function_module, "<code>", "exec")
 
         local_ns = {}
         exec(compiled_function, user_ns, local_ns)

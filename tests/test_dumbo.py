@@ -85,7 +85,7 @@ def test_dumbo_fib_metadata(dumbo_fib_fixture):
     assert metadata.avg_load_duration > 0
     assert metadata.avg_overhead_duration > 0
     assert metadata.avg_total_duration > 0
-    assert metadata.nodumbo_call_duration > metadata.avg_total_duration
+    assert metadata.estimated_nodumbo_call_duration > metadata.avg_total_duration
     assert metadata.estimated_saved_time > 0
 
     assert metadata == dumbo_fib.get_metadata(i)
