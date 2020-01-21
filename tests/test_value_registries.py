@@ -2,11 +2,11 @@ import dataclasses
 from dataclasses import dataclass
 from typing import Type
 
-from dumbo.internal.fingerprints import Fingerprint, FingerprintDigest
-from dumbo.internal.identities import ValueIdentity, value_name_identity, ValueFingerprintIdentity
-from dumbo.internal.providers import ValueProvider
-from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.value_registries import ValueRegistry, WeakValueRegistry
+from mamo.internal.fingerprints import Fingerprint, FingerprintDigest
+from mamo.internal.identities import ValueIdentity, value_name_identity, ValueFingerprintIdentity
+from mamo.internal.providers import ValueProvider
+from mamo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.value_registries import ValueRegistry, WeakValueRegistry
 from tests.testing import BoxedValue
 
 

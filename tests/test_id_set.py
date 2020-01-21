@@ -1,4 +1,4 @@
-from dumbo.internal.common.id_set import IdSet
+from mamo.internal.common.id_set import IdSet
 from tests.collection_testing.test_mutable_set import MutableSetTests
 
 

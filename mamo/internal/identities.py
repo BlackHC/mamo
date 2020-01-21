@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Tuple, FrozenSet
 
-from dumbo.internal.fingerprints import Fingerprint, FingerprintName
+from mamo.internal.fingerprints import Fingerprint, FingerprintName
 
 
 class ValueIdentity:

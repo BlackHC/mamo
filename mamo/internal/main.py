@@ -4,26 +4,26 @@ from typing import Optional, List
 
 from functools import wraps
 
-from dumbo.internal.fingerprint_registry import FingerprintRegistry
-from dumbo.internal.fingerprints import Fingerprint, CellResultFingerprint, ResultFingerprint
-from dumbo.internal.identities import (
+from mamo.internal.fingerprint_registry import FingerprintRegistry
+from mamo.internal.fingerprints import Fingerprint, CellResultFingerprint, ResultFingerprint
+from mamo.internal.identities import (
     ValueIdentity,
     value_name_identity,
     ComputedValueIdentity,
     ValueCallIdentity,
     ValueCellResultIdentity)
-from dumbo.internal.identity_registry import IdentityRegistry
-from dumbo.internal.function_registry import FunctionRegistry
-from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.result_metadata import ResultMetadata
-from dumbo.internal.result_registry import ResultRegistry
-from dumbo.internal.stopwatch_context import StopwatchContext
-from dumbo.internal.value_provider_mediator import ValueProviderMediator
-from dumbo.internal.value_registries import ValueRegistry
-from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.persisted_store import PersistedStore
+from mamo.internal.identity_registry import IdentityRegistry
+from mamo.internal.function_registry import FunctionRegistry
+from mamo.internal.module_extension import MODULE_EXTENSIONS
+from mamo.internal.result_metadata import ResultMetadata
+from mamo.internal.result_registry import ResultRegistry
+from mamo.internal.stopwatch_context import StopwatchContext
+from mamo.internal.value_provider_mediator import ValueProviderMediator
+from mamo.internal.value_registries import ValueRegistry
+from mamo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.persisted_store import PersistedStore
 
-from dumbo.internal import default_module_extension
+from mamo.internal import default_module_extension
 
 # Install the default module extension.
 MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleExtension())
@@ -32,7 +32,7 @@ MODULE_EXTENSIONS.set_default_extension(default_module_extension.DefaultModuleEx
 class ReExecutionPolicy:
     def __call__(
             self,
-            dumbo: "Dumbo",
+            mamo: "Mamo",
             vid: ComputedValueIdentity,
             fingerprint: ResultFingerprint,
             stored_fingerprint: Optional[ResultFingerprint],
@@ -41,24 +41,24 @@ class ReExecutionPolicy:
 
 
 def execute_decision_only_missing(
-        dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
+        mamo: "Mamo", vid: ComputedValueIdentity, fingerprint: Fingerprint, stored_fingerprint: Optional[Fingerprint]
 ):
     return False
 
 
 def execute_decision_stale(max_depth):
     def decider(
-            dumbo: "Dumbo", vid: ComputedValueIdentity, fingerprint: ResultFingerprint,
+            mamo: "Mamo", vid: ComputedValueIdentity, fingerprint: ResultFingerprint,
             stored_fingerprint: Optional[ResultFingerprint]
     ):
         if fingerprint != stored_fingerprint:
             return True
-        return dumbo.is_stale_vid(vid, depth=max_depth)
+        return mamo.is_stale_vid(vid, depth=max_depth)
 
     return decider
 
 
-class Dumbo:
+class Mamo:
     fingerprint_registry: FingerprintRegistry
     identity_registry: IdentityRegistry
     staleness_registry: StalenessRegistry
@@ -73,7 +73,7 @@ class Dumbo:
     re_execution_policy: ReExecutionPolicy
 
     _call_duration_stack: List
-    _nodumbo_call_duration_stack: List
+    _nomamo_call_duration_stack: List
 
     def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
@@ -96,7 +96,7 @@ class Dumbo:
         self.re_execution_policy = re_execution_policy or execute_decision_stale(-1)
 
         self._call_duration_stack = [0.0]
-        self._nodumbo_call_duration_stack = [0.0]
+        self._nomamo_call_duration_stack = [0.0]
 
     @property
     def deep_fingerprint_source_prefix(self):
@@ -209,7 +209,7 @@ class Dumbo:
 
     def _shall_execute(self, vid: ComputedValueIdentity, fingerprint: ResultFingerprint):
         # TODO: could directly ask persisted_cache
-        stored_fingerprint = dumbo.result_registry.resolve_fingerprint(vid)
+        stored_fingerprint = mamo.result_registry.resolve_fingerprint(vid)
         return stored_fingerprint is None or self.re_execution_policy(self, vid, fingerprint, stored_fingerprint)
 
     @staticmethod
@@ -219,34 +219,34 @@ class Dumbo:
             with StopwatchContext() as total_stopwatch:
                 nonlocal fid
 
-                # If dumbo was not initialized before, we might still have to set fid.
+                # If mamo was not initialized before, we might still have to set fid.
                 if fid is None:
                     # Just initialize it with defaults.
-                    if dumbo is None:
+                    if mamo is None:
                         # TODO: maybe log?
-                        init_dumbo()
+                        init_mamo()
 
-                    fid = dumbo.function_registry.identify_function(func)
+                    fid = mamo.function_registry.identify_function(func)
 
-                vid = dumbo.identity_registry.identify_call(fid, args, kwargs)
+                vid = mamo.identity_registry.identify_call(fid, args, kwargs)
 
-                call_fingerprint = dumbo.fingerprint_registry.fingerprint_call(func, args, kwargs)
-                result_metadata = dumbo.persisted_store.get_result_metadata(vid)
+                call_fingerprint = mamo.fingerprint_registry.fingerprint_call(func, args, kwargs)
+                result_metadata = mamo.persisted_store.get_result_metadata(vid)
 
-                if dumbo._shall_execute(vid, call_fingerprint):
-                    dumbo._call_duration_stack.append(0.)
-                    dumbo._nodumbo_call_duration_stack.append(0.)
+                if mamo._shall_execute(vid, call_fingerprint):
+                    mamo._call_duration_stack.append(0.)
+                    mamo._nomamo_call_duration_stack.append(0.)
                     with StopwatchContext() as call_stopwatch:
                         result = func(*args, **kwargs)
                     wrapped_result = MODULE_EXTENSIONS.wrap_return_value(result)
-                    dumbo.value_provider_mediator.add(vid, wrapped_result, call_fingerprint)
+                    mamo.value_provider_mediator.add(vid, wrapped_result, call_fingerprint)
 
-                    result_metadata = dumbo.persisted_store.get_result_metadata(vid)
+                    result_metadata = mamo.persisted_store.get_result_metadata(vid)
                     result_metadata.call_duration = call_stopwatch.elapsed_time
-                    result_metadata.subcall_duration = dumbo._call_duration_stack.pop()
-                    result_metadata.estimated_nodumbo_call_duration = result_metadata.call_duration - result_metadata.subcall_duration + dumbo._nodumbo_call_duration_stack.pop()
+                    result_metadata.subcall_duration = mamo._call_duration_stack.pop()
+                    result_metadata.estimated_nomamo_call_duration = result_metadata.call_duration - result_metadata.subcall_duration + mamo._nomamo_call_duration_stack.pop()
                 else:
-                    wrapped_result = dumbo._get_value(vid)
+                    wrapped_result = mamo._get_value(vid)
                     if wrapped_result is None:
                         # log?
                         raise RuntimeError(f"Couldn't find cached result for {vid}!")
@@ -254,21 +254,21 @@ class Dumbo:
                     result_metadata.num_cache_hits += 1
 
             result_metadata.total_durations += total_stopwatch.elapsed_time
-            dumbo._call_duration_stack[-1] += total_stopwatch.elapsed_time
-            dumbo._nodumbo_call_duration_stack[-1] += result_metadata.estimated_nodumbo_call_duration
+            mamo._call_duration_stack[-1] += total_stopwatch.elapsed_time
+            mamo._nomamo_call_duration_stack[-1] += result_metadata.estimated_nomamo_call_duration
             return wrapped_result
 
-        wrapped_func.dumbo_unwrapped_func = func
-        wrapped_func.is_stale = lambda *args, **kwargs: dumbo.is_stale_call(func, args, kwargs)
-        wrapped_func.is_cached = lambda *args, **kwargs: dumbo.is_cached_call(func, args, kwargs)
-        wrapped_func.forget = lambda *args, **kwargs: dumbo.forget_call(func, args, kwargs)
-        wrapped_func.get_metadata = lambda *args, **kwargs: dumbo.get_metadata_call(func, args, kwargs)
-        wrapped_func.get_tag_name = lambda *args, **kwargs: dumbo.get_tag_name_call(func, args, kwargs)
+        wrapped_func.mamo_unwrapped_func = func
+        wrapped_func.is_stale = lambda *args, **kwargs: mamo.is_stale_call(func, args, kwargs)
+        wrapped_func.is_cached = lambda *args, **kwargs: mamo.is_cached_call(func, args, kwargs)
+        wrapped_func.forget = lambda *args, **kwargs: mamo.forget_call(func, args, kwargs)
+        wrapped_func.get_metadata = lambda *args, **kwargs: mamo.get_metadata_call(func, args, kwargs)
+        wrapped_func.get_tag_name = lambda *args, **kwargs: mamo.get_tag_name_call(func, args, kwargs)
 
-        # This method is a static method, so that dumbo does not need to be initialized.
+        # This method is a static method, so that mamo does not need to be initialized.
         fid = None
-        if dumbo is not None:
-            fid = dumbo.function_registry.identify_function(func)
+        if mamo is not None:
+            fid = mamo.function_registry.identify_function(func)
 
         return wrapped_func
 
@@ -294,7 +294,7 @@ class Dumbo:
         }
 
         # TODO: this adds some staleness overhead but not sure how to handle composites atm.
-        if any(dumbo._shall_execute(result_vids[name], result_fingerprints[name]) for name in outputs):
+        if any(mamo._shall_execute(result_vids[name], result_fingerprints[name]) for name in outputs):
             cell_function()
 
             # Retrieve stores.
@@ -302,12 +302,12 @@ class Dumbo:
             user_ns.update(wrapped_results)
 
             for name in outputs:
-                dumbo.value_provider_mediator.add(result_vids[name],
+                mamo.value_provider_mediator.add(result_vids[name],
                                                   user_ns[name], result_fingerprints[name])
         else:
             for name in outputs:
                 vid = result_vids[name]
-                cached_result = dumbo._get_value(vid)
+                cached_result = mamo._get_value(vid)
                 if cached_result is None:
                     # log?
                     raise RuntimeError(f"Couldn't find cached result for {vid}!")
@@ -374,10 +374,10 @@ class Dumbo:
         gc.collect()
 
 
-dumbo: Optional[Dumbo] = None
+mamo: Optional[Mamo] = None
 
 
-def init_dumbo(
+def init_mamo(
         memory_only=True,
         path: Optional[str] = None,
         externally_cached_path: Optional[str] = None,
@@ -385,12 +385,12 @@ def init_dumbo(
         deep_fingerprint_source_prefix: Optional[str] = None,
         re_execution_policy: Optional[ReExecutionPolicy] = None
 ):
-    global dumbo
-    assert dumbo is None
+    global mamo
+    assert mamo is None
 
     persisted_cache = (
         PersistedStore.from_memory()
         if memory_only
         else PersistedStore.from_file(path, externally_cached_path)
     )
-    dumbo = Dumbo(persisted_cache, deep_fingerprint_source_prefix, re_execution_policy)
+    mamo = Mamo(persisted_cache, deep_fingerprint_source_prefix, re_execution_policy)

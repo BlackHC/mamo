@@ -3,8 +3,8 @@ from types import CodeType, FunctionType
 from typing import Optional, Set, Dict, MutableMapping
 from weakref import WeakKeyDictionary
 
-from dumbo.internal import reflection
-from dumbo.internal.fingerprints import (
+from mamo.internal import reflection
+from mamo.internal.fingerprints import (
     FunctionFingerprint,
     DeepFunctionFingerprint,
     CallFingerprint,
@@ -12,18 +12,18 @@ from dumbo.internal.fingerprints import (
     CellResultFingerprint,
     CellFingerprint,
     Fingerprint, MAX_FINGERPRINT_VALUE_LENGTH)
-from dumbo.internal.identities import (
+from mamo.internal.identities import (
     ValueCallIdentity,
     ComputedValueIdentity,
     ValueIdentityVisitor,
     ValueCellResultIdentity)
-from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.providers import ValueProvider, FunctionProvider, FingerprintProvider, ValueOracle
-from dumbo.internal.reflection import FunctionDependencies
+from mamo.internal.module_extension import MODULE_EXTENSIONS
+from mamo.internal.providers import ValueProvider, FunctionProvider, FingerprintProvider, ValueOracle
+from mamo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
 # We can define a FunctionCall wrapper and pass that through the module system to allow for customization!
-from dumbo.internal.weakref_utils import WeakKeyIdMap
+from mamo.internal.weakref_utils import WeakKeyIdMap
 
 
 class FingerprintRegistry(FingerprintProvider):
@@ -203,8 +203,8 @@ class FingerprintRegistry(FingerprintProvider):
                 isbuiltin = inspect.isbuiltin(callee)
 
             # Unwrap special functions.
-            if hasattr(callee, "dumbo_unwrapped_func"):
-                callee = callee.dumbo_unwrapped_func
+            if hasattr(callee, "mamo_unwrapped_func"):
+                callee = callee.mamo_unwrapped_func
 
             if allow_deep and reflection.is_func_local(callee, self.deep_fingerprint_source_prefix):
                 func_fingerprint = self._get_deep_fingerprint(callee.__code__, callee.__globals__)

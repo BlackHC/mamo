@@ -1,8 +1,8 @@
 from typing import Optional, Set
 
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity, ValueFingerprintIdentity
-from dumbo.internal.providers import ValueProvider, IdentityProvider, FingerprintProvider
+from mamo.internal.fingerprints import Fingerprint
+from mamo.internal.identities import ValueIdentity, ComputedValueIdentity, ValueFingerprintIdentity
+from mamo.internal.providers import ValueProvider, IdentityProvider, FingerprintProvider
 
 
 class ValueProviderMediator(ValueProvider):

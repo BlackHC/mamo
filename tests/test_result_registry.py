@@ -1,10 +1,10 @@
 import dataclasses
 
-from dumbo.internal.fingerprints import ResultFingerprint
-from dumbo.internal.identities import ValueCallIdentity, FunctionIdentity
-from dumbo.internal.providers import ValueProvider
-from dumbo.internal.result_registry import ResultRegistry
-from dumbo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.fingerprints import ResultFingerprint
+from mamo.internal.identities import ValueCallIdentity, FunctionIdentity
+from mamo.internal.providers import ValueProvider
+from mamo.internal.result_registry import ResultRegistry
+from mamo.internal.staleness_registry import StalenessRegistry
 from tests.test_value_registries import VVF, ValueProviderTests
 from tests.testing import DummyPersistedStore, BoxedValue
 
@@ -47,7 +47,7 @@ class TestResultRegistry(ValueProviderTests):
 
         assert instance.has_vid(vid)
         # TODO: this is weird tbh. But cannot separate between online and persisted vids otherwise?
-        # Maybe be explicit in Dumbo?
+        # Maybe be explicit in Mamo?
         assert not instance.get_vids()
 
         assert instance.persisted_store.get_fingerprint(vid) == fingerprint

@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import hashlib
 
-from dumbo.api_support import (
+from mamo.api_support import (
     DBPickledValue,
     ExternallyCachedValue,
     ModuleExtension,

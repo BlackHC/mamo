@@ -95,7 +95,7 @@ def test_function_module():
 
 
 def test_is_function_local():
-    local_prefix = r"C:\Users\black\Documents\dumbo"
+    local_prefix = r"C:\Users\black\Documents\mamo"
     print(not is_function_local(print, local_prefix))
     print(is_function_local(local_func, local_prefix))
     print(not is_function_local(dis.disassemble, local_prefix))

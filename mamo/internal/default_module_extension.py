@@ -1,17 +1,17 @@
 import pickle
 from dataclasses import dataclass
 
-from dumbo.internal.weakref_utils import ObjectProxy
+from mamo.internal.weakref_utils import ObjectProxy
 
 from typing import Optional, Tuple
 
-from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue
-from dumbo.internal.db_stored_value import DBPickledValue
-from dumbo.internal.module_extension import ModuleExtension, ObjectSaver
+from mamo.internal.cached_values import ExternallyCachedFilePath, CachedValue, ExternallyCachedValue
+from mamo.internal.db_stored_value import DBPickledValue
+from mamo.internal.module_extension import ModuleExtension, ObjectSaver
 
 import hashlib
 
-from dumbo.internal.reflection import get_type_qualified_name
+from mamo.internal.reflection import get_type_qualified_name
 
 MAX_PICKLE_SIZE = 2 ** 30
 
@@ -110,6 +110,6 @@ class DefaultModuleExtension(ModuleExtension):
             return ObjectProxy(value)
 
         # If the value is already wrapped, create a new proxy.
-        # This is necessary so that if we pass the same object through nested dumbo functions
+        # This is necessary so that if we pass the same object through nested mamo functions
         # the result doesn't share identities (which is important for staleness!)
         return ObjectProxy(value.__subject__)

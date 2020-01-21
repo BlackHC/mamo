@@ -3,13 +3,13 @@ from typing import Optional, Dict
 
 from _pytest.fixtures import fixture
 
-from dumbo.internal import persisted_store, main
-from dumbo.internal.cached_values import CachedValue
-from dumbo.internal.db_stored_value import DBPickledValue
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ValueIdentity
-from dumbo.internal.persisted_store import CacheOperationResult
-from dumbo.internal.result_metadata import ResultMetadata
+from mamo.internal import persisted_store, main
+from mamo.internal.cached_values import CachedValue
+from mamo.internal.db_stored_value import DBPickledValue
+from mamo.internal.fingerprints import Fingerprint
+from mamo.internal.identities import ValueIdentity
+from mamo.internal.persisted_store import CacheOperationResult
+from mamo.internal.result_metadata import ResultMetadata
 
 
 @dataclass
@@ -78,14 +78,14 @@ class BoxedValue:
 
 
 @fixture
-def dumbo_fixture():
-    if main.dumbo is not None:
-        main.dumbo.testing_close()
-        main.dumbo = None
+def mamo_fixture():
+    if main.mamo is not None:
+        main.mamo.testing_close()
+        main.mamo = None
 
-    main.init_dumbo()
+    main.init_mamo()
 
-    yield main.dumbo
+    yield main.mamo
 
-    main.dumbo.testing_close()
-    main.dumbo = None
+    main.mamo.testing_close()
+    main.mamo = None

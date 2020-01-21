@@ -2,8 +2,8 @@ import pickle
 from dataclasses import dataclass
 from typing import Optional
 
-from dumbo.internal.cached_values import CachedValue
-from dumbo.internal.module_extension import ObjectSaver
+from mamo.internal.cached_values import CachedValue
+from mamo.internal.module_extension import ObjectSaver
 
 
 @dataclass(frozen=True)

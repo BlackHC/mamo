@@ -3,7 +3,7 @@ from typing import Optional
 
 import hashlib
 
-from dumbo.api_support import (
+from mamo.api_support import (
     ExternallyCachedValue,
     ModuleExtension,
     ObjectSaver,

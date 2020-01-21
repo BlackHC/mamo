@@ -12,7 +12,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="dumbo",
+    name="mamo",
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
@@ -24,10 +24,10 @@ setup(
     long_description_content_type="text/markdown",
 
     # The project's main homepage.
-    url="https://github.com/blackhc/dumbo",
+    url="https://github.com/blackhc/mamo",
     # Author details
     author="Andreas @blackhc Kirsch",
-    author_email="blackhc+dumbo@gmail.com",
+    author_email="blackhc+mamo@gmail.com",
     # Choose your license
     license="MIT",
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -49,7 +49,7 @@ setup(
     keywords="tools memoization data",
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=["dumbo", "dumbo.internal", "dumbo.support", "dumbo.internal.common"],
+    packages=["mamo", "mamo.internal", "mamo.support", "mamo.internal.common"],
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:

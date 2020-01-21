@@ -2,9 +2,9 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Optional, Dict, TypeVar
 
-from dumbo.internal.cached_values import ExternallyCachedFilePath, CachedValue
-from dumbo.internal.fingerprints import FingerprintDigest, FingerprintDigestRepr, MAX_FINGERPRINT_VALUE_LENGTH
-from dumbo.internal.reflection import get_module_name
+from mamo.internal.cached_values import ExternallyCachedFilePath, CachedValue
+from mamo.internal.fingerprints import FingerprintDigest, FingerprintDigestRepr, MAX_FINGERPRINT_VALUE_LENGTH
+from mamo.internal.reflection import get_module_name
 
 
 T = TypeVar("T")
@@ -97,7 +97,7 @@ class ModuleRegistry:
         # Why?
         # Because we usually test for None using 'is\is not None'
         # and having a proxy breaks that.
-        # The general rule is that one should not dumbo 'None' results
+        # The general rule is that one should not mamo 'None' results
 
         # TODO: raise or log? (probably throw because it breaks staleness etc?)
         if value is None:

@@ -1,4 +1,4 @@
-from dumbo.internal.common.key_id_dict import KeyIdDict
+from mamo.internal.common.key_id_dict import KeyIdDict
 from tests.collection_testing.test_mutable_mapping import MutableMappingTests
 
 

@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from dumbo.internal import weakref_utils
-from dumbo.internal.weakref_utils import AbstractWrappedValueMutableMapping
+from mamo.internal import weakref_utils
+from mamo.internal.weakref_utils import AbstractWrappedValueMutableMapping
 from tests.collection_testing import test_mutable_mapping
 from tests.collection_testing import test_mutable_set
 from tests.collection_testing.test_mutable_mapping import MutableMappingTests

@@ -1,7 +1,7 @@
 from os import mkdir, listdir, path
 
-from dumbo.internal.identities import value_name_identity
-from dumbo.internal.persisted_store import PersistedStore
+from mamo.internal.identities import value_name_identity
+from mamo.internal.persisted_store import PersistedStore
 
 from tests.testing import BoxedValue
 
@@ -132,10 +132,10 @@ def test_persisted_store_persists_different_paths():
 
         print(temp_storage_dir)
         assert set(listdir(temp_storage_dir)) == {
-            "dumbo_store",
-            "dumbo_store.index",
-            "dumbo_store.lock",
-            "dumbo_store.tmp",
+            "mamo_store",
+            "mamo_store.index",
+            "mamo_store.lock",
+            "mamo_store.tmp",
             "ext",
         }
         assert listdir(external_path) == ["test_builtins.list_0000000000.pickle"]

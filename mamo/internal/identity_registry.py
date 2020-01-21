@@ -1,13 +1,13 @@
-from dumbo.internal import reflection
+from mamo.internal import reflection
 
-from dumbo.internal.identities import (
+from mamo.internal.identities import (
     ValueFingerprintIdentity,
     ValueIdentity,
     CellIdentity,
     ValueCallIdentity,
     ValueCellResultIdentity
 )
-from dumbo.internal.providers import IdentityProvider, ValueOracle
+from mamo.internal.providers import IdentityProvider, ValueOracle
 
 
 class IdentityRegistry(IdentityProvider):

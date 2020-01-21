@@ -23,7 +23,7 @@ class ExtendedClass(BaseClass):
 
 def test_zodb():
     connection = ZODB.connection(None)
-    entry = Entry("Dumbo Dumbo", 10)
+    entry = Entry("Mamo Mamo", 10)
     root = connection.root
     root.entry = entry
 

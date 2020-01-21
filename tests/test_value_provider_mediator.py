@@ -2,12 +2,12 @@ import dataclasses
 
 import pytest
 
-from dumbo.internal.fingerprints import ResultFingerprint
-from dumbo.internal.identities import ValueCallIdentity, FunctionIdentity, ValueFingerprintIdentity, value_name_identity
-from dumbo.internal.providers import ValueOracle, ValueProvider
-from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.value_provider_mediator import ValueProviderMediator
-from dumbo.internal.value_registries import ValueRegistry
+from mamo.internal.fingerprints import ResultFingerprint
+from mamo.internal.identities import ValueCallIdentity, FunctionIdentity, ValueFingerprintIdentity, value_name_identity
+from mamo.internal.providers import ValueOracle, ValueProvider
+from mamo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.value_provider_mediator import ValueProviderMediator
+from mamo.internal.value_registries import ValueRegistry
 from tests.test_value_registries import ValueProviderTests, VVF
 from tests.testing import DummyPersistedStore
 

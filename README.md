@@ -1,10 +1,10 @@
-# Dumbo
+# Mamo
 
-A big flappy cache that never forgets. (Dumb-o jell-o)
+A big flappy cache that never forgets.
 
 ## Idea
 
-Decorate functions with the dumbo decorator to memoize computations, but only when
+Decorate functions with the mamo decorator to memoize computations, but only when
 it is worth it.
 
 ## Architecture
@@ -19,7 +19,7 @@ Creating correspondence between old code and current code is the trickiest bit.
 
 * API/wrappers
 
-API to make the experience of using dumbo a nice one.
+API to make the experience of using mamo a nice one.
 
 * decision engine
 
@@ -54,13 +54,13 @@ Ideally, we would like to find out when we access into cached data and resolve t
 An easier solution for starters is to create entries for important subcomponents of
 structured data.
 
-## What would a dumbo magic in IPython look like?
+## What would a mamo magic in IPython look like?
 
-If we dumbo a cell, how do we know its inputs? We need a function.
+If we mamo a cell, how do we know its inputs? We need a function.
 We could specify inputs and outputs by hand.
 
 ```
-    %%dumbo (inputs) -> outputs
+    %%mamo (inputs) -> outputs
 ```
 
 ## How do we find an identifier for a function that can be stored?
@@ -107,7 +107,7 @@ Could use the latest/longest CID?
 Could always wrap results in a wrapper?
 
 ```python
-@dumbo
+@mamo
 def f():
     return x
 
@@ -128,7 +128,7 @@ Once a value has been assigned to a variable, it loses its history and origin.
 Maybe I should be explicit about its origin then?
 
 ```python
-result = dumbo(f, ..., "description?")
+result = mamo(f, ..., "description?")
 ```
 I kinda wanna store the call info with the variable. I could just use a subfield? but then 
 I need to duplicate. So need a proxy and yadda yadda
@@ -180,9 +180,9 @@ Or, I could resolve values with a WeakValueDictionary.
 
 ## Always wrap primitive types in constant numpy arrays?
 
-Also, dumbo assumes immutable data types essentially. We can also enforce this to a degree.
+Also, mamo assumes immutable data types essentially. We can also enforce this to a degree.
 
-## How do I write tests for Dumbo?
+## How do I write tests for Mamo?
 
 I need a range of simple unit tests and integration tests for different modules to be able to keep developing the library and be sure that it works as intended.
 
@@ -290,7 +290,7 @@ TODO:
 
 ## Better support for deep function signatures and staleness
 
-* [x] support functions calling dumbo-wrapped functions (duh!)
+* [x] support functions calling mamo-wrapped functions (duh!)
 * [x] add a cache for shallow function signatures
 * [f] walk the cache and detect staleness?
 * [x] can we use named cells somehow? we can use a name with the cell magic (as an option)
@@ -332,20 +332,20 @@ Biggest issue:
 
 I'm storing func pointers now, but they won't re-resolve on autoreload.
 This can be fixed by not using CIDs but by using function ids to func objects.
-As soon as the function is wrapped again within dumbo, the association will be updated.
+As soon as the function is wrapped again within mamo, the association will be updated.
 
 ## Random observation
 
 Depending on a global variable that depends on the same function does not result in staleness.
 Because we cut cyclic dependencies (as we simulate one call stack instead of allowing for different ones.)
 
-## Reflection on the state of Dumbo
+## Reflection on the state of Mamo
 
 Coming back to this code after a somewhat longer break: it is difficult to understand what's going on with the call logic.
 
 The semantics of everything here is a mess :(
 
-## Revisiting the semantics and goals of Dumbo
+## Revisiting the semantics and goals of Mamo
 
 The big and main question is:
 
@@ -409,9 +409,9 @@ Do we want to keep Vid -> Fingerprint without keeping the value?
 We can get those from PersistedOnlineCache. No need to keep a second layer!
 However, the problem being PersistedOnlineCache does not store external values!
 
-We could get rid of most of DumboOnlineCache entirely if we stored VIDs and Fingerprints in ObjProxies :shrug:
+We could get rid of most of MamoOnlineCache entirely if we stored VIDs and Fingerprints in ObjProxies :shrug:
 (The only exception would be special-cased external objects.)
-However, that removes the idea of DumboOnlineCache as an intermediate caching layer :-/
+However, that removes the idea of MamoOnlineCache as an intermediate caching layer :-/
 
 So one can separate:
 A FingerprintFactory for ComputedValues and a registry that connects vids and values,

@@ -1,6 +1,6 @@
 [run]
-source=dumbo/*
+source=mamo/*
 omit=
     */tests/*
     setup.py
-    dumbo/internal/providers.py
+    mamo/internal/providers.py

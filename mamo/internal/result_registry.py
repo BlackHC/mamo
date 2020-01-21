@@ -1,10 +1,10 @@
-from dumbo.internal.fingerprints import Fingerprint, ResultFingerprint
-from dumbo.internal.common.id_set import IdSet
-from dumbo.internal.providers import ValueProvider
-from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.value_registries import WeakValueRegistry
-from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
-from dumbo.internal.persisted_store import PersistedStore
+from mamo.internal.fingerprints import Fingerprint, ResultFingerprint
+from mamo.internal.common.id_set import IdSet
+from mamo.internal.providers import ValueProvider
+from mamo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.value_registries import WeakValueRegistry
+from mamo.internal.identities import ValueIdentity, ComputedValueIdentity
+from mamo.internal.persisted_store import PersistedStore
 
 
 class ResultRegistry(ValueProvider):

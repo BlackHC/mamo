@@ -16,7 +16,7 @@ class ResultMetadata:
     call_duration: float = 0
     subcall_duration: float = 0
 
-    estimated_nodumbo_call_duration: float = 0
+    estimated_nomamo_call_duration: float = 0
 
     @property
     def avg_total_duration(self):
@@ -32,7 +32,7 @@ class ResultMetadata:
 
     @property
     def estimated_saved_time(self):
-        return (self.estimated_nodumbo_call_duration - self.avg_total_duration) * self.num_calls
+        return (self.estimated_nomamo_call_duration - self.avg_total_duration) * self.num_calls
 
     @property
     def num_calls(self):

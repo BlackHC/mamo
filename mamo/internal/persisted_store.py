@@ -9,13 +9,13 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from transaction import TransactionManager
 
-from dumbo.internal.bimap import PersistentBimap
-from dumbo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ValueIdentity
-from dumbo.internal.module_extension import MODULE_EXTENSIONS
-from dumbo.internal.result_metadata import ResultMetadata
-from dumbo.internal.stopwatch_context import StopwatchContext
+from mamo.internal.bimap import PersistentBimap
+from mamo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
+from mamo.internal.fingerprints import Fingerprint
+from mamo.internal.identities import ValueIdentity
+from mamo.internal.module_extension import MODULE_EXTENSIONS
+from mamo.internal.result_metadata import ResultMetadata
+from mamo.internal.stopwatch_context import StopwatchContext
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
@@ -27,7 +27,7 @@ class BuiltinExternallyCachedValue(ExternallyCachedValue):
 
 
 @dataclass
-class DumboPersistedCacheStorage(Persistent):
+class MamoPersistedCacheStorage(Persistent):
     external_cache_id: int
     vid_to_cached_value: Dict[ValueIdentity, CachedValue]
     vid_to_fingerprint: Dict[ValueIdentity, Fingerprint]
@@ -58,7 +58,7 @@ class CacheOperationResult:
 # TODO: to repr method
 @dataclass
 class PersistedStore:
-    storage: DumboPersistedCacheStorage
+    storage: MamoPersistedCacheStorage
     transaction_manager: TransactionManager
     db: DB
     path: str
@@ -83,7 +83,7 @@ class PersistedStore:
         # TODO: log the paths?
         # TODO: in general, make properties available for quering in the console/Jupyter?
 
-        db = DB(FileStorage(os.path.join(path, "dumbo_store")))
+        db = DB(FileStorage(os.path.join(path, "mamo_store")))
         return PersistedStore(db, path, externally_cached_path)
 
     def __init__(self, db: DB, path: Optional[str], externally_cached_path: Optional[str]):
@@ -99,7 +99,7 @@ class PersistedStore:
 
         if not hasattr(root, "storage"):
             with self.transaction_manager:
-                root.storage = DumboPersistedCacheStorage()
+                root.storage = MamoPersistedCacheStorage()
 
         self.storage = root.storage
 

@@ -1,19 +1,19 @@
 from types import FunctionType
 from typing import cast
 
-import dumbo
-from dumbo.internal import main
+import mamo
+from mamo.internal import main
 
-# Here, we just assume dumbo as general memoization library.
-from dumbo.internal.identities import value_name_identity, ValueCallIdentity
+# Here, we just assume mamo as general memoization library.
+from mamo.internal.identities import value_name_identity, ValueCallIdentity
 
 from tests.testing import BoxedValue
 
 # noinspection PyUnresolvedReferences
-from tests.testing import dumbo_fixture
+from tests.testing import mamo_fixture
 from _pytest.fixtures import fixture
 
-dumbo_fib: FunctionType = None
+mamo_fib: FunctionType = None
 get_global_var: FunctionType = None
 
 
@@ -22,7 +22,7 @@ def unwrapped_fib(n):
         return 0
     if n < 2:
         return 1
-    return dumbo_fib(n - 1) + dumbo_fib(n - 2)
+    return mamo_fib(n - 1) + mamo_fib(n - 2)
 
 
 global_var = None
@@ -33,47 +33,47 @@ def unwrapped_get_global_var(offset):
 
 
 @fixture
-def dumbo_fib_fixture(dumbo_fixture):
-    global dumbo_fib
-    dumbo_fib = dumbo.dumbo(unwrapped_fib)
-    yield dumbo_fib
-    dumbo_fib = None
+def mamo_fib_fixture(mamo_fixture):
+    global mamo_fib
+    mamo_fib = mamo.mamo(unwrapped_fib)
+    yield mamo_fib
+    mamo_fib = None
 
 
 @fixture
-def dumbo_get_global_var_fixture(dumbo_fixture):
+def mamo_get_global_var_fixture(mamo_fixture):
     global get_global_var
-    get_global_var = dumbo.dumbo(unwrapped_get_global_var)
-    yield dumbo_fib
+    get_global_var = mamo.mamo(unwrapped_get_global_var)
+    yield mamo_fib
     get_global_var = None
 
 
-def test_dumbo_fib(dumbo_fib_fixture):
-    result = dumbo_fib(8)
+def test_mamo_fib(mamo_fib_fixture):
+    result = mamo_fib(8)
     assert result == 34
-    assert len(dumbo.get_cached_value_identities(False)) == 9
-    assert len(dumbo.get_cached_value_identities(False)) == 9
+    assert len(mamo.get_cached_value_identities(False)) == 9
+    assert len(mamo.get_cached_value_identities(False)) == 9
 
-    assert len(dumbo.get_cached_value_identities(False)) == 9
+    assert len(mamo.get_cached_value_identities(False)) == 9
     del result
-    dumbo.flush_online_cache()
-    assert len(dumbo.get_cached_value_identities(False)) == 0
-    assert len(dumbo.get_cached_value_identities(True)) == 9
+    mamo.flush_online_cache()
+    assert len(mamo.get_cached_value_identities(False)) == 0
+    assert len(mamo.get_cached_value_identities(True)) == 9
 
 
-def test_dumbo_fib_metadata(dumbo_fib_fixture):
+def test_mamo_fib_metadata(mamo_fib_fixture):
     i = 30
-    dumbo_fib(i)
-    dumbo.flush_online_cache()
+    mamo_fib(i)
+    mamo.flush_online_cache()
 
-    dumbo_fib(i)
-    dumbo_fib(i)
-    dumbo_fib(i)
-    dumbo.flush_online_cache()
+    mamo_fib(i)
+    mamo_fib(i)
+    mamo_fib(i)
+    mamo.flush_online_cache()
 
-    result = dumbo_fib(i)
+    result = mamo_fib(i)
 
-    metadata = dumbo.get_metadata(result)
+    metadata = mamo.get_metadata(result)
 
     assert metadata.num_loads == 2
     assert metadata.num_cache_hits == 4
@@ -85,103 +85,103 @@ def test_dumbo_fib_metadata(dumbo_fib_fixture):
     assert metadata.avg_load_duration > 0
     assert metadata.avg_overhead_duration > 0
     assert metadata.avg_total_duration > 0
-    assert metadata.estimated_nodumbo_call_duration > metadata.avg_total_duration
+    assert metadata.estimated_nomamo_call_duration > metadata.avg_total_duration
     assert metadata.estimated_saved_time > 0
 
-    assert metadata == dumbo_fib.get_metadata(i)
+    assert metadata == mamo_fib.get_metadata(i)
 
 
-def test_dumbo_func_api_works(dumbo_fib_fixture):
-    assert not dumbo_fib.is_cached(8)
-    assert dumbo_fib.is_stale(8)
+def test_mamo_func_api_works(mamo_fib_fixture):
+    assert not mamo_fib.is_cached(8)
+    assert mamo_fib.is_stale(8)
 
-    result = dumbo_fib(8)
-    dumbo.tag('test', result)
+    result = mamo_fib(8)
+    mamo.tag('test', result)
     del result
 
-    assert dumbo_fib.is_cached(8)
-    assert not dumbo_fib.is_stale(8)
+    assert mamo_fib.is_cached(8)
+    assert not mamo_fib.is_stale(8)
 
-    dumbo.flush_online_cache()
+    mamo.flush_online_cache()
 
-    assert dumbo_fib.get_tag_name(8) == 'test'
+    assert mamo_fib.get_tag_name(8) == 'test'
 
-    assert not dumbo.get_cached_value_identities(False)
-    assert dumbo_fib.is_cached(8)
-    assert not dumbo_fib.is_stale(8)
+    assert not mamo.get_cached_value_identities(False)
+    assert mamo_fib.is_cached(8)
+    assert not mamo_fib.is_stale(8)
 
-    dumbo_fib.forget(8)
+    mamo_fib.forget(8)
 
-    assert not dumbo_fib.is_cached(8)
-    assert dumbo_fib.is_stale(8)
-
-
-def test_dumbo_value_api_works(dumbo_fib_fixture):
-    result = dumbo_fib(8)
-
-    assert not dumbo.is_stale(result)
-    assert dumbo.get_metadata(result)
-    assert not dumbo.get_tag_name(result)
-
-    dumbo.tag('test', result)
-
-    assert dumbo.get_tag_name(result) == 'test'
-    assert dumbo.get_tag_value('test') == result
-
-    dumbo.forget(result)
-
-    assert dumbo.is_stale(result)
+    assert not mamo_fib.is_cached(8)
+    assert mamo_fib.is_stale(8)
 
 
-def test_dumbo_can_wrap_uninitialized():
-    # and creates dumbo on call
+def test_mamo_value_api_works(mamo_fib_fixture):
+    result = mamo_fib(8)
 
-    assert main.dumbo is None
+    assert not mamo.is_stale(result)
+    assert mamo.get_metadata(result)
+    assert not mamo.get_tag_name(result)
 
-    f = dumbo.dumbo(lambda: 1)
+    mamo.tag('test', result)
+
+    assert mamo.get_tag_name(result) == 'test'
+    assert mamo.get_tag_value('test') == result
+
+    mamo.forget(result)
+
+    assert mamo.is_stale(result)
+
+
+def test_mamo_can_wrap_uninitialized():
+    # and creates mamo on call
+
+    assert main.mamo is None
+
+    f = mamo.mamo(lambda: 1)
 
     assert f() == 1
 
-    assert main.dumbo is not None
+    assert main.mamo is not None
 
-    main.dumbo.testing_close()
-    main.dumbo = None
+    main.mamo.testing_close()
+    main.mamo = None
 
 
-def test_dumbo_register_external_value(dumbo_fib_fixture):
+def test_mamo_register_external_value(mamo_fib_fixture):
     magic_number = 15
     unique_name = "magic_number"
 
-    dumbo.register_external_value(unique_name, magic_number)
+    mamo.register_external_value(unique_name, magic_number)
 
-    assert dumbo.get_external_value(unique_name) == magic_number
+    assert mamo.get_external_value(unique_name) == magic_number
 
-    result = dumbo_fib_fixture(magic_number)
+    result = mamo_fib_fixture(magic_number)
 
-    assert cast(ValueCallIdentity, main.dumbo.value_provider_mediator.identify_value(result)).args_vid[
+    assert cast(ValueCallIdentity, main.mamo.value_provider_mediator.identify_value(result)).args_vid[
                0] == value_name_identity(unique_name)
 
-    dumbo.register_external_value(unique_name, None)
+    mamo.register_external_value(unique_name, None)
 
-    assert dumbo.get_external_value(unique_name) is None
+    assert mamo.get_external_value(unique_name) is None
 
 
-def test_dumbo_tag(dumbo_fib_fixture):
-    result = dumbo_fib(10)
+def test_mamo_tag(mamo_fib_fixture):
+    result = mamo_fib(10)
     tag_name = "duck"
 
-    assert dumbo.get_tag_value(tag_name) is None
+    assert mamo.get_tag_value(tag_name) is None
 
-    dumbo.tag(tag_name, result)
+    mamo.tag(tag_name, result)
 
-    assert dumbo.get_tag_value(tag_name) is result
+    assert mamo.get_tag_value(tag_name) is result
 
-    dumbo.tag(tag_name, None)
+    mamo.tag(tag_name, None)
 
-    assert dumbo.get_tag_value(tag_name) is None
+    assert mamo.get_tag_value(tag_name) is None
 
 
-def test_run_cell(dumbo_fixture):
+def test_run_cell(mamo_fixture):
     class Dummy:
         pass
 
@@ -192,19 +192,19 @@ def test_run_cell(dumbo_fixture):
     user_ns_obj.boxed = BoxedValue("hello")
     cell_code = "global var; var = boxed"
 
-    main.dumbo.run_cell(None, cell_code, user_ns)
+    main.mamo.run_cell(None, cell_code, user_ns)
 
     assert user_ns_obj.var == user_ns_obj.boxed
     assert user_ns_obj.var is not user_ns_obj.boxed
 
     var_old = user_ns_obj.var
 
-    main.dumbo.run_cell(None, cell_code, user_ns)
+    main.mamo.run_cell(None, cell_code, user_ns)
 
     assert user_ns_obj.var is var_old
 
 
-def test_run_named_cell(dumbo_fixture):
+def test_run_named_cell(mamo_fixture):
     class Dummy:
         pass
 
@@ -215,18 +215,18 @@ def test_run_named_cell(dumbo_fixture):
     user_ns_obj.boxed = BoxedValue("hello")
     cell_code = "global var; var = boxed"
 
-    main.dumbo.run_cell("named_cell", cell_code, user_ns)
+    main.mamo.run_cell("named_cell", cell_code, user_ns)
 
     assert user_ns_obj.var == user_ns_obj.boxed
     assert user_ns_obj.var is not user_ns_obj.boxed
 
     var_old = user_ns_obj.var
 
-    main.dumbo.run_cell("named_cell", "pass", user_ns)
+    main.mamo.run_cell("named_cell", "pass", user_ns)
 
     assert user_ns_obj.var is var_old
 
-# @dumbo.dumbo()
+# @mamo.mamo()
 # def slow_operation(a: int, b: int):
 #     time.sleep(a)
 #     return a + b
@@ -245,4 +245,4 @@ def test_run_named_cell(dumbo_fixture):
 
 #
 # def test_get_func_qualified_name():
-#     assert reflection.get_func_qualified_name(slow_operation) == "test_dumbo.slow_operation"
+#     assert reflection.get_func_qualified_name(slow_operation) == "test_mamo.slow_operation"

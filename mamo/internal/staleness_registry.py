@@ -1,4 +1,4 @@
-from dumbo.internal.weakref_utils import WeakIdSet, supports_weakrefs
+from mamo.internal.weakref_utils import WeakIdSet, supports_weakrefs
 
 
 class StalenessRegistry:

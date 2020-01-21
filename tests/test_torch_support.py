@@ -1,5 +1,5 @@
-import dumbo
-import dumbo.support.torch
+import mamo
+import mamo.support.torch
 
 import torch as th
 
@@ -18,7 +18,7 @@ def add_th_code(a, b):
 
 @pytest.mark.parametrize("size", [10, 1000])
 def test_add_th(size):
-    dumbo.main.dumbo = None
+    mamo.main.mamo = None
 
     a = th.rand(size=(size, size))
     b = th.rand(size=(size, size))
@@ -26,7 +26,7 @@ def test_add_th(size):
 
     add_th_execution_counter_old = add_th_execution_counter
 
-    add_th = dumbo.dumbo(add_th_code)
+    add_th = mamo.mamo(add_th_code)
 
     ab = add_th(a, b)
     ac = add_th(a, c)
@@ -40,10 +40,10 @@ def test_add_th(size):
 @pytest.mark.parametrize("size", [10, 1000])
 def test_add_th_persistent(size):
     with tempfile.TemporaryDirectory() as temp_storage_dir:
-        dumbo.main.dumbo = None
-        dumbo.main.init_dumbo(False, temp_storage_dir)
+        mamo.main.mamo = None
+        mamo.main.init_mamo(False, temp_storage_dir)
 
-        add_th = dumbo.dumbo(add_th_code)
+        add_th = mamo.mamo(add_th_code)
 
         a = th.rand(size=(size, size))
         b = th.rand(size=(size, size))
@@ -59,12 +59,12 @@ def test_add_th_persistent(size):
 
         assert add_th_execution_counter - add_th_execution_counter_old == 2
 
-        dumbo.main.dumbo.testing_close()
+        mamo.main.mamo.testing_close()
 
-        dumbo.main.dumbo = None
-        dumbo.main.init_dumbo(False, temp_storage_dir)
+        mamo.main.mamo = None
+        mamo.main.init_mamo(False, temp_storage_dir)
 
-        add_th = dumbo.dumbo(add_th_code)
+        add_th = mamo.mamo(add_th_code)
 
         add_th_execution_counter_old = add_th_execution_counter
 
@@ -73,5 +73,5 @@ def test_add_th_persistent(size):
 
         assert add_th_execution_counter - add_th_execution_counter_old == 0
 
-        dumbo.main.dumbo.testing_close()
-        dumbo.main.dumbo = None
+        mamo.main.mamo.testing_close()
+        mamo.main.mamo = None

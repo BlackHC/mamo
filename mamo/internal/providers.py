@@ -2,8 +2,8 @@ from abc import ABC
 from types import FunctionType
 from typing import NoReturn, Set
 
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.identities import ValueIdentity, FunctionIdentity, CellIdentity
+from mamo.internal.fingerprints import Fingerprint
+from mamo.internal.identities import ValueIdentity, FunctionIdentity, CellIdentity
 
 
 class FunctionProvider:

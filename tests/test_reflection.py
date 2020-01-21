@@ -1,5 +1,5 @@
-from dumbo.internal import reflection
-from dumbo.internal.reflection import FunctionDependencies
+from mamo.internal import reflection
+from mamo.internal.reflection import FunctionDependencies
 
 global_variable = None
 
@@ -57,7 +57,7 @@ def test_get_func_qualified_name_nested_function():
 def test_get_func_qualified_name_imported_function():
     assert (
             reflection.get_func_qualified_name(reflection.get_func_qualified_name)
-            == "dumbo.internal.reflection.get_func_qualified_name"
+            == "mamo.internal.reflection.get_func_qualified_name"
     )
 
 

@@ -2,13 +2,13 @@ import weakref
 from dataclasses import dataclass
 from typing import MutableMapping, Set
 
-from dumbo.internal.bimap import MappingBimap
-from dumbo.internal.fingerprints import Fingerprint
-from dumbo.internal.common.key_id_dict import KeyIdDict
-from dumbo.internal.identities import ValueIdentity, ComputedValueIdentity
-from dumbo.internal.providers import ValueProvider
-from dumbo.internal.staleness_registry import StalenessRegistry
-from dumbo.internal.weakref_utils import WeakKeyIdMap
+from mamo.internal.bimap import MappingBimap
+from mamo.internal.fingerprints import Fingerprint
+from mamo.internal.common.key_id_dict import KeyIdDict
+from mamo.internal.identities import ValueIdentity, ComputedValueIdentity
+from mamo.internal.providers import ValueProvider
+from mamo.internal.staleness_registry import StalenessRegistry
+from mamo.internal.weakref_utils import WeakKeyIdMap
 
 
 @dataclass
