@@ -1,5 +1,7 @@
 from os import mkdir, listdir, path
 
+import pytest
+
 from mamo.internal.identities import value_name_identity
 from mamo.internal.persisted_store import PersistedStore
 
@@ -74,14 +76,15 @@ def test_persisted_store_get_metadata_works():
     assert result_metadata.total_load_durations > first_load_duration
 
 
-def test_persisted_store_persists():
+@pytest.mark.parametrize("size", [10, 1000])
+def test_persisted_store_persists(size):
     with tempfile.TemporaryDirectory() as temp_storage_dir:
         db_path = temp_storage_dir
 
         store = PersistedStore.from_file(db_path)
 
         vid = value_name_identity("test")
-        value = BoxedValue(1)
+        value = BoxedValue("Hello World" * size)
         tag_name = "duck"
 
         assert store.load_value(vid) is None

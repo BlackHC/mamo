@@ -21,6 +21,12 @@ class NumpyExternallyCachedValue(ExternallyCachedValue):
     def load(self):
         return np.load(self.path, "r")
 
+    @staticmethod
+    def save(external_path, value):
+        np.save(external_path, value)
+
+        return NumpyExternallyCachedValue(external_path)
+
 
 class NumpyObjectSaver(ObjectSaver):
     def __init__(self, value):
@@ -40,9 +46,7 @@ class NumpyObjectSaver(ObjectSaver):
         shape_info = "_".join(map(str, self.value.shape))
         external_path = external_path_builder.build(shape_info, "npy")
 
-        np.save(external_path, self.value)
-
-        return NumpyExternallyCachedValue(external_path)
+        return NumpyExternallyCachedValue.save(external_path, self.value)
 
 
 class NumpyModuleExtension(ModuleExtension):

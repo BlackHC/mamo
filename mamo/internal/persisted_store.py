@@ -20,12 +20,6 @@ from mamo.internal.stopwatch_context import StopwatchContext
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
 
-class BuiltinExternallyCachedValue(ExternallyCachedValue):
-    def load(self):
-        with open(self.path, "rb") as external_file:
-            return pickle.load(external_file)
-
-
 @dataclass
 class MamoPersistedCacheStorage(Persistent):
     external_cache_id: int

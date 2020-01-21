@@ -31,31 +31,6 @@ class CachedTuple(CachedValue):
         return sum(item.get_stored_size() for item in self.values)
 
 
-class DefaultObjectSaver(ObjectSaver):
-    def __init__(self, value, pickled_bytes):
-        super().__init__(value)
-        self.pickled_bytes = pickled_bytes
-
-    def get_estimated_size(self) -> Optional[int]:
-        return len(self.pickled_bytes)
-
-    def compute_digest_(self):
-        return hashlib.md5(self.pickled_bytes).digest()
-
-    def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
-        if external_path_builder is not None:
-            external_path = external_path_builder.build(get_type_qualified_name(self.value), "pickle")
-            with open(external_path, "bw") as external_file:
-                external_file.write(self.pickled_bytes)
-
-            cached_value = ExternallyCachedValue(external_path)
-        else:
-            cached_value = DBPickledValue(self.pickled_bytes)
-
-        # TODO: catch transactions error for objects that cannot be pickled here?
-        return cached_value
-
-
 class DefaultTupleObjectSaver(ObjectSaver):
     def __init__(self, value, object_savers: Tuple[ObjectSaver]):
         super().__init__(value)
@@ -77,6 +52,50 @@ class DefaultTupleObjectSaver(ObjectSaver):
         if any(item is None for item in cached_items):
             return None
         return CachedTuple(cached_items)
+
+
+class DefaultExternallyCachedValue(ExternallyCachedValue):
+
+    def load(self):
+        with open(self.path, "br") as external_file:
+            pickled_bytes = external_file.read()
+
+        try:
+            return pickle.loads(pickled_bytes)
+        except pickle.PickleError as err:
+            # TODO: log err
+            print(err)
+            return None
+
+    @staticmethod
+    def save(external_path, pickled_bytes):
+        # TODO: add error handling!
+        with open(external_path, "bw") as external_file:
+            external_file.write(pickled_bytes)
+
+        return DefaultExternallyCachedValue(external_path)
+
+
+class DefaultObjectSaver(ObjectSaver):
+    def __init__(self, value, pickled_bytes):
+        super().__init__(value)
+        self.pickled_bytes = pickled_bytes
+
+    def get_estimated_size(self) -> Optional[int]:
+        return len(self.pickled_bytes)
+
+    def compute_digest_(self):
+        return hashlib.md5(self.pickled_bytes).digest()
+
+    def cache_value(self, external_path_builder: Optional[ExternallyCachedFilePath]) -> Optional[CachedValue]:
+        if external_path_builder is not None:
+            external_path = external_path_builder.build(get_type_qualified_name(self.value), "pickle")
+            cached_value = DefaultExternallyCachedValue.save(external_path, self.pickled_bytes)
+        else:
+            cached_value = DBPickledValue(self.pickled_bytes)
+
+        # TODO: catch transactions error for objects that cannot be pickled here?
+        return cached_value
 
 
 class DefaultModuleExtension(ModuleExtension):

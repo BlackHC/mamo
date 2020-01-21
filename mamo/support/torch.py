@@ -21,6 +21,12 @@ class TorchExternallyCachedValue(ExternallyCachedValue):
     def load(self):
         return th.load(self.path)
 
+    @staticmethod
+    def save(external_path, value):
+        th.save(value, external_path)
+
+        return TorchExternallyCachedValue(external_path)
+
 
 class TorchObjectSaver(ObjectSaver):
     def __init__(self, value: th.Tensor):
@@ -40,9 +46,7 @@ class TorchObjectSaver(ObjectSaver):
         shape_info = "_".join(map(str, self.value.shape))
         external_path = external_path_builder.build(shape_info, "pth")
 
-        th.save(self.value, external_path)
-
-        return TorchExternallyCachedValue(external_path)
+        return TorchExternallyCachedValue.save(external_path, self.value)
 
 
 class TorchModuleExtension(ModuleExtension):
