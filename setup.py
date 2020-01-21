@@ -16,7 +16,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version="0.0.1",
+    version="0.1.0",
     description="A big flappy cache that never forgets.",
 
     # Fix windows newlines.
@@ -60,8 +60,9 @@ setup(
     # for example:
     # $ pip install -e .[dev,test]
     extras_require={
-        "dev": ["check-manifest", "numpy", "torch"],
-        "test": ["coverage", "codecov", "pytest", "pytest-benchmark", "pytest-cov"],
+        "dev": ["check-manifest", "numpy", "torch<2"],
+        # See https://github.com/nedbat/coveragepy/blob/master/doc/whatsnew5x.rst
+        "test": ["coverage<5", "codecov", "pytest", "pytest-runner", "pytest-benchmark", "pytest-cov"],
     },
     setup_requires=["pytest-runner"],
 )
