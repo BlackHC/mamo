@@ -75,15 +75,15 @@ class Mamo:
     _call_duration_stack: List
     _nomamo_call_duration_stack: List
 
-    def __init__(self, persisted_cache, deep_fingerprint_source_prefix: Optional[str],
+    def __init__(self, persisted_store, deep_fingerprint_source_prefix: Optional[str],
                  re_execution_policy: Optional[ReExecutionPolicy]):
-        self.persisted_store = persisted_cache
+        self.persisted_store = persisted_store
 
         self.value_provider_mediator = ValueProviderMediator()
 
         self.staleness_registry = StalenessRegistry()
         self.external_value_registry = ValueRegistry(self.staleness_registry)
-        self.result_registry = ResultRegistry(self.staleness_registry, persisted_cache)
+        self.result_registry = ResultRegistry(self.staleness_registry, persisted_store)
 
         self.function_registry = FunctionRegistry()
         self.fingerprint_registry = FingerprintRegistry(deep_fingerprint_source_prefix, self.value_provider_mediator,
@@ -97,6 +97,11 @@ class Mamo:
 
         self._call_duration_stack = [0.0]
         self._nomamo_call_duration_stack = [0.0]
+
+    def swap_persisted_store(self, new_persisted_store):
+        self.persisted_store.close()
+        self.persisted_store = new_persisted_store
+        self.result_registry.persisted_store = new_persisted_store
 
     @property
     def deep_fingerprint_source_prefix(self):
@@ -366,7 +371,7 @@ class Mamo:
 
     # noinspection PyTypeChecker
     def testing_close(self):
-        self.persisted_store.testing_close()
+        self.persisted_store.close()
         self.identity_registry = None
         self.fingerprint_registry = None
         self.value_provider_mediator = None
@@ -388,9 +393,27 @@ def init_mamo(
     global mamo
     assert mamo is None
 
-    persisted_cache = (
+    new_persisted_store = (
         PersistedStore.from_memory()
         if memory_only
         else PersistedStore.from_file(path, externally_cached_path)
     )
-    mamo = Mamo(persisted_cache, deep_fingerprint_source_prefix, re_execution_policy)
+    mamo = Mamo(new_persisted_store, deep_fingerprint_source_prefix, re_execution_policy)
+
+
+# TODO: add tests!
+# TODO: This is a hack because it breaks metadata!
+def swap_storage(
+    memory_only=True,
+    path: Optional[str] = None,
+    externally_cached_path: Optional[str] = None
+):
+    assert mamo is not None
+
+    new_persisted_store = (
+        PersistedStore.from_memory()
+        if memory_only
+        else PersistedStore.from_file(path, externally_cached_path)
+    )
+
+    mamo.swap_persisted_store(new_persisted_store)

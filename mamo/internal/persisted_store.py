@@ -97,7 +97,7 @@ class PersistedStore:
 
         self.storage = root.storage
 
-    def testing_close(self):
+    def close(self):
         self.db.close()
         self.transaction_manager.clearSynchs()
 

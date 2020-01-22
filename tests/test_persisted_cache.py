@@ -97,14 +97,14 @@ def test_persisted_store_persists(size):
         assert store.get_fingerprint(vid) == vid.fingerprint
         assert store.get_tag_vid(tag_name) is vid
 
-        store.testing_close()
+        store.close()
 
         store = PersistedStore.from_file(db_path)
         assert store.load_value(vid) == value
         assert store.get_fingerprint(vid) == vid.fingerprint
         assert store.get_tag_vid(tag_name) == vid
 
-        store.testing_close()
+        store.close()
 
 
 def test_persisted_store_persists_different_paths():
@@ -131,7 +131,7 @@ def test_persisted_store_persists_different_paths():
         assert store.get_fingerprint(vid) == vid.fingerprint
         assert store.get_tag_vid(tag_name) is vid
 
-        store.testing_close()
+        store.close()
 
         print(temp_storage_dir)
         assert set(listdir(temp_storage_dir)) == {
