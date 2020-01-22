@@ -16,6 +16,7 @@ from mamo.internal.identities import ValueIdentity
 from mamo.internal.module_extension import MODULE_EXTENSIONS
 from mamo.internal.result_metadata import ResultMetadata
 from mamo.internal.stopwatch_context import StopwatchContext
+from mamo.internal.weakref_utils import ObjectProxy
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 
@@ -150,11 +151,9 @@ class PersistedStore:
             # TODO: logic to decide whether to store the value at all or not depending
             # on computational budget.
 
-            # TODO: this is currently holding object proxies sometimes
-            # Which makes weakref collection hard!
-            # # TODO: ugly: need to unwrap object proxy, fix this!
-            # assert isinstance(value.value, ObjectProxy)
-            # value = dataclasses.replace(value, value=value.value.__subject__)
+            # Unwrap object proxy
+            if isinstance(value, ObjectProxy):
+                value = value.__subject__
 
             result = self.try_create_cached_value(vid, value)
             if result.cached_value:
@@ -166,6 +165,7 @@ class PersistedStore:
                                                  save_duration=result.save_duration)
                 self.storage.vid_to_result_metadata[vid] = result_metadata
             else:
+                # TODO: log? result is None means caching has failed!
                 if existing_cached_value:
                     del self.storage.vid_to_cached_value[vid]
                     del self.storage.vid_to_fingerprint[vid]

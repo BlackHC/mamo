@@ -4,6 +4,7 @@ import pytest
 
 from mamo.internal.identities import value_name_identity
 from mamo.internal.persisted_store import PersistedStore
+from mamo.internal.weakref_utils import ObjectProxy
 
 from tests.testing import BoxedValue
 
@@ -142,3 +143,26 @@ def test_persisted_store_persists_different_paths():
             "ext",
         }
         assert listdir(external_path) == ["test_builtins.list_0000000000.pickle"]
+
+
+def test_persisted_store_unwraps_objproxies():
+    with tempfile.TemporaryDirectory() as temp_storage_dir:
+        db_path = temp_storage_dir
+        external_path = path.join(temp_storage_dir, "ext")
+        mkdir(external_path)
+
+        store = PersistedStore.from_file(db_path, external_path)
+
+        vid = value_name_identity("test")
+        value = ObjectProxy(list(range(100000)))
+        tag_name = "duck"
+
+        assert store.load_value(vid) is None
+
+        store.add(vid, value, vid.fingerprint)
+
+        assert store.get_cached_value(vid).path == path.join(
+            external_path, "test_builtins.list_0000000000.pickle"
+        )
+
+        store.close()
