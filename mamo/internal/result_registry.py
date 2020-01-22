@@ -30,6 +30,9 @@ class ResultRegistry(ValueProvider):
     def flush(self):
         self.values.clear()
 
+    def flush_value(self, value):
+        self.values.remove(value)
+
     def add(self, vid: ComputedValueIdentity, value, fingerprint: ResultFingerprint):
         assert isinstance(vid, ComputedValueIdentity)
         assert isinstance(fingerprint, ResultFingerprint)
@@ -57,8 +60,6 @@ class ResultRegistry(ValueProvider):
 
         self.values.discard(value)
         self.online_registry.remove_value(value)
-
-
 
     def remove_value(self, value: object):
         if not self.has_value(value):

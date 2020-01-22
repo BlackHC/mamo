@@ -60,7 +60,7 @@ class PersistedStore:
 
     @staticmethod
     def from_memory():
-        db = DB(None)
+        db = DB(None, large_record_size=64*(1 << 20))
         return PersistedStore(db, None, None)
 
     @staticmethod

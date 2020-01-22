@@ -55,6 +55,11 @@ def flush_online_cache():
     main.mamo.flush_cache()
 
 
+def flush_value(value):
+    _require_mamo()
+    main.mamo.flush_value(value)
+
+
 def get_cached_value_identities(persisted=False):
     _ensure_mamo_init()
 

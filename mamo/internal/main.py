@@ -129,6 +129,10 @@ class Mamo:
     def flush_cache(self):
         self.result_registry.flush()
 
+    # TODO: add tests
+    def flush_value(self, value):
+        self.result_registry.flush_value(value)
+
     def is_stale_call(self, func, args, kwargs, *, depth=-1):
         fid = self.function_registry.identify_function(func)
         vid = self.identity_registry.identify_call(fid, args, kwargs)
