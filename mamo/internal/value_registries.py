@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import MutableMapping, Set
 
 from mamo.internal.bimap import MappingBimap
+from mamo.internal.delayed_interruption_context import delayed_interruption
 from mamo.internal.fingerprints import Fingerprint
 from mamo.internal.common.key_id_dict import KeyIdDict
 from mamo.internal.identities import ValueIdentity, ComputedValueIdentity
@@ -29,11 +30,15 @@ class AbstractValueRegistry(ValueProvider):
     def resolve_fingerprint(self, vid: ValueIdentity):
         return self.fingerprint_value(self.resolve_value(vid))
 
+    @delayed_interruption()
     def add(self, vid: ValueIdentity, value, fingerprint: Fingerprint):
         assert value is not None
 
         if vid in self.vid_value_bimap:
             existing_value = self.vid_value_bimap.get_value(vid)
+            if existing_value == value:
+                return
+
             self.staleness_registry.mark_stale(existing_value)
             del self.value_fingerprint_map[existing_value]
 
@@ -46,6 +51,7 @@ class AbstractValueRegistry(ValueProvider):
         if value is not None:
             self.remove_value(value)
 
+    @delayed_interruption()
     def remove_value(self, value: object):
         if not self.has_value(value):
             return

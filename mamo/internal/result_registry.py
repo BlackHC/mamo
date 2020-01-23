@@ -1,3 +1,4 @@
+from mamo.internal.delayed_interruption_context import delayed_interruption
 from mamo.internal.fingerprints import Fingerprint, ResultFingerprint
 from mamo.internal.common.id_set import IdSet
 from mamo.internal.providers import ValueProvider
@@ -42,25 +43,28 @@ class ResultRegistry(ValueProvider):
         if existing_value is value:
             return
 
-        if existing_value is not None:
-            self.values.discard(existing_value)
-
-        self.values.add(value)
-        self.online_registry.add(vid, value, fingerprint)
         self.persisted_store.add(vid, value, fingerprint)
+
+        with delayed_interruption():
+            if existing_value is not None:
+                self.values.discard(existing_value)
+
+            self.online_registry.add(vid, value, fingerprint)
+            self.values.add(value)
 
     def remove_vid(self, vid: ValueIdentity):
         assert isinstance(vid, ComputedValueIdentity)
 
-        self.persisted_store.remove_vid(vid)
-
         value = self.online_registry.resolve_value(vid)
-        if value is None:
-            return
 
-        self.values.discard(value)
-        self.online_registry.remove_value(value)
+        with delayed_interruption():
+            if value is not None:
+                self.values.discard(value)
+                self.online_registry.remove_value(value)
 
+            self.persisted_store.remove_vid(vid)
+
+    @delayed_interruption()
     def remove_value(self, value: object):
         if not self.has_value(value):
             return
