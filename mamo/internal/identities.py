@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Tuple, FrozenSet
 
-from mamo.internal.fingerprints import Fingerprint, FingerprintName
+from mamo.internal.fingerprints import Fingerprint, FingerprintName, FingerprintDigestRepr, FingerprintDigest
 
 
 class ValueIdentity:
@@ -17,7 +17,12 @@ class ValueFingerprintIdentity(ValueIdentity):
 
     def get_external_info(self):
         if isinstance(self.fingerprint, FingerprintName):
-            return f"{self.fingerprint.name}"
+            return self.fingerprint.name
+        elif isinstance(self.fingerprint, FingerprintDigestRepr):
+            return self.fingerprint.value
+        elif isinstance(self.fingerprint, FingerprintDigest):
+            return f"{self.qualified_type_name}{{{hex(abs(hash(self.fingerprint.digest)))}}}"
+
         return f"{self.qualified_type_name}"
 
 

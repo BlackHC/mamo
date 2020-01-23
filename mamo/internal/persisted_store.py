@@ -130,7 +130,6 @@ class PersistedStore:
 
             cached_value = object_saver.cache_value(external_path_builder)
             if not cached_value:
-                # TODO: log?
                 return None
 
             stored_size = cached_value.get_stored_size()
@@ -156,7 +155,7 @@ class PersistedStore:
                 value = value.__subject__
 
             result = self.try_create_cached_value(vid, value)
-            if result.cached_value:
+            if result:
                 self.storage.vid_to_cached_value[vid] = result.cached_value
                 self.storage.vid_to_fingerprint[vid] = fingerprint
 

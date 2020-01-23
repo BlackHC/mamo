@@ -2,6 +2,7 @@ import os
 from abc import ABC
 from dataclasses import dataclass, replace
 from typing import Optional, NoReturn
+from pathvalidate import sanitize_filename
 
 
 class CachedValue:
@@ -35,7 +36,9 @@ class ExternallyCachedFilePath:
         return replace(path, external_id=path.external_id + f"_{i}")
 
     def build(self, cache_info, ext):
-        return os.path.join(self.path, f"{self.vid_info}_{cache_info}_{self.external_id}.{ext}")
+        necessary_suffix = f"_{self.external_id}.{ext}"
+        return os.path.join(self.path, sanitize_filename(f"{self.vid_info}_{cache_info}",
+                                                         max_len=255 - len(necessary_suffix)) + necessary_suffix)
 
 
 @dataclass
@@ -48,9 +51,11 @@ class ExternallyCachedValue(CachedValue, ABC):
         unlinked_path = self.path + ".unlinked"
         # TODO: shall we pass the vid as argument and store it in a file next to
         # the unlinked entry?
-        os.rename(self.path, unlinked_path)
+        try:
+            os.rename(self.path, unlinked_path)
+        except FileNotFoundError as err:
+            # TODO: log?
+            return
 
     def get_stored_size(self):
         return os.path.getsize(self.path)
-
-
