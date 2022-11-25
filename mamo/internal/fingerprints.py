@@ -11,6 +11,9 @@ class Fingerprint:
 
 @dataclass(frozen=True)
 class FingerprintDigest(Fingerprint):
+    """A fingerprint that uses a digest of the value.
+    For all purposes, we ignore the actual value for hashing and use the provided digest.
+    """
     digest: object
 
 
@@ -21,9 +24,7 @@ class FingerprintName(Fingerprint):
 
 @dataclass(frozen=True)
 class FingerprintDigestRepr(FingerprintDigest):
-    """`FingerprintDigest` that carries its original value to be more informative.
-
-    For all purposes, we ignore the actual value for hashing and use the provided digest."""
+    """A `FingerprintDigest` that carries its original value to be more informative."""
 
     value: str
 
@@ -34,7 +35,7 @@ class FingerprintDigestRepr(FingerprintDigest):
         return super().__hash__()
 
 
-# We keep this separate from FunctionIdentity, so as to cache by identity
+# We keep this separate from FunctionIdentity, so we cache by identity
 # and determine staleness using fingerprints.
 # (Otherwise, we lack a key to index with and find stale entries.)
 @dataclass(frozen=True)

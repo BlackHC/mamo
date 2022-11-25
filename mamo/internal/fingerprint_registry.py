@@ -28,7 +28,6 @@ from mamo.internal.weakref_utils import WeakKeyIdMap
 
 class FingerprintRegistry(FingerprintProvider):
     # TODO: We only need the FingerprintProvider bit of ValueProvider!
-    # Once we move
     value_provider: ValueProvider
     value_oracle: ValueOracle
     function_provider: FunctionProvider
