@@ -4,7 +4,11 @@ from timeit import default_timer
 
 
 class StopwatchContext(AbstractContextManager):
-    """Usage:
+    """
+    A context the keeps track of the elapsed time. The elapsed time is available as the `elapsed_time` attribute.
+    Nested contexts are not supported, but reusing the same context is.
+
+    Example:
 
     ```
     with StopwatchContext() as stopwatch:
@@ -15,16 +19,16 @@ class StopwatchContext(AbstractContextManager):
     """
 
     def __init__(self):
-        self.start_time = None
-        self.end_time = None
-
-    @property
-    def elapsed_time(self):
-        return self.end_time - self.start_time
+        self._start_time = None
+        self.elapsed_time = 0.
 
     def __enter__(self):
-        self.start_time = default_timer()
+        assert self._start_time is None
+        self._start_time = default_timer()
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.end_time = default_timer()
+        end_time = default_timer()
+        self.elapsed_time += end_time - self._start_time
+        self._start_time = None
+
