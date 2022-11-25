@@ -1,8 +1,12 @@
-from mamo.internal.weakref_utils import WeakIdSet, supports_weakrefs
+from mamo.internal.common.weakref_utils import WeakIdSet, supports_weakrefs
 
 
 class StalenessRegistry:
-    # We need to keep track of unlinked values to be able to tell that they are stale now!
+    """
+    A registry of values that are stale.
+
+    A value is stale if it is not used anymore, but it is not yet removed from the cache.
+    """
     stale_values: WeakIdSet[object]
 
     def __init__(self):

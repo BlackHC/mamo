@@ -13,6 +13,7 @@ T_co = TypeVar('T_co', covariant=True)  # Any type covariant containers.
 
 
 def supports_weakrefs(value):
+    """Determine if the given value supports weak references."""
     return type(value).__weakrefoffset__ != 0
 
 
@@ -40,9 +41,9 @@ class IdMapFinalizer(Generic[KT]):
     def __iter__(self):
         # TODO: add a test that shows that this is necessary to avoid deletions
         # Take a snapshot of the keys. This will ensure that the dictionary will be stable during iteration.
-        return iter(list(map(self.lookup_id, self.id_to_finalizer)))
+        return iter(list(map(self.get_object, self.id_to_finalizer)))
 
-    def lookup_id(self, id_value):
+    def get_object(self, id_value):
         return self.id_to_finalizer[id_value].peek()[0]
 
     def register(self, value: KT, custom_handler):

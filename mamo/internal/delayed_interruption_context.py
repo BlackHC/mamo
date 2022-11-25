@@ -4,8 +4,12 @@ from typing import Iterable, Optional
 
 
 # Adapted from https://stackoverflow.com/a/21919644/854731
+# TODO(blackhc): this can be improved using the other answers on the above link.
 @contextmanager
 def delayed_interruption():
+    """
+    Context manager that delays the delivery of SIGINT until the context is exited.
+    """
     signal_received: Optional[Iterable] = None
 
     def handler(self, sig, frame):

@@ -1,4 +1,4 @@
-from mamo.internal.bimap import DictBimap, PersistentBimap, MappingBimap
+from mamo.internal.common.bimap import DictBimap, PersistentBimap, MappingBimap
 
 import pytest
 

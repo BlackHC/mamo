@@ -4,7 +4,7 @@ import pytest
 
 from mamo.internal.identities import value_name_identity
 from mamo.internal.persisted_store import PersistedStore
-from mamo.internal.weakref_utils import ObjectProxy
+from mamo.internal.common.weakref_utils import ObjectProxy
 
 from tests.testing import BoxedValue
 

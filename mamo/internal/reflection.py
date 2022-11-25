@@ -37,6 +37,28 @@ def get_func_qualified_name(func):
 
 @dataclass
 class CodeAnalyzer:
+    """
+    Analyzes the bytecode of a function and extracts the following features:
+    - global loads
+    - global stores
+    - function calls
+
+    Example:
+    def foo():
+        bar()
+        baz = 1
+        return baz
+
+    The following features will be extracted:
+    - global loads: bar
+    - global stores: baz
+    - function calls: bar
+
+    We can use this information to determine whether a function is pure.
+    We create a new CodeAnalyzer for each function call to avoid having to reset the state.
+    We
+
+    """
     instructions: List[dis.Instruction]
     index: int = 0
 

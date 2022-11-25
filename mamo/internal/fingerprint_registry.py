@@ -23,7 +23,7 @@ from mamo.internal.reflection import FunctionDependencies
 
 # TODO: This can be part of the default module extension! (or its own extension!!)
 # We can define a FunctionCall wrapper and pass that through the module system to allow for customization!
-from mamo.internal.weakref_utils import WeakKeyIdMap
+from mamo.internal.common.weakref_utils import WeakKeyIdMap
 
 
 class FingerprintRegistry(FingerprintProvider):
@@ -198,7 +198,6 @@ class FingerprintRegistry(FingerprintProvider):
                 return self._get_function_fingerprint(sub_callable, allow_deep=allow_deep)
 
             if not hasattr(callee, '__code__') or not hasattr(callee, '__globals__'):
-                import types
                 isbuiltin = inspect.isbuiltin(callee)
 
             # Unwrap special functions.

@@ -3,10 +3,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from mamo.internal import weakref_utils
-from mamo.internal.weakref_utils import AbstractWrappedValueMutableMapping
-from tests.collection_testing import test_mutable_mapping
-from tests.collection_testing import test_mutable_set
+from mamo.internal.common import weakref_utils
+from mamo.internal.common.weakref_utils import AbstractWrappedValueMutableMapping
 from tests.collection_testing.test_mutable_mapping import MutableMappingTests
 from tests.collection_testing.test_mutable_set import MutableSetTests
 
@@ -65,7 +63,7 @@ def test_id_map_finalizer():
     id_map_finalizer.register(a, custom_handler)
     gc.collect()
 
-    assert id_map_finalizer.lookup_id(id(a)) == a
+    assert id_map_finalizer.get_object(id(a)) == a
 
     assert a_has_been_finalized_counter == 0
 

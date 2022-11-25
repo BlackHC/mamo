@@ -1,7 +1,7 @@
 import pickle
 from dataclasses import dataclass
 
-from mamo.internal.weakref_utils import ObjectProxy
+from mamo.internal.common.weakref_utils import ObjectProxy
 
 from typing import Optional, Tuple
 

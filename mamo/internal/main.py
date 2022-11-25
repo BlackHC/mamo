@@ -17,7 +17,7 @@ from mamo.internal.function_registry import FunctionRegistry
 from mamo.internal.module_extension import MODULE_EXTENSIONS
 from mamo.internal.result_metadata import ResultMetadata
 from mamo.internal.result_registry import ResultRegistry
-from mamo.internal.stopwatch_context import StopwatchContext
+from mamo.internal.common.stopwatch_context import StopwatchContext
 from mamo.internal.value_provider_mediator import ValueProviderMediator
 from mamo.internal.value_registries import ValueRegistry
 from mamo.internal.staleness_registry import StalenessRegistry

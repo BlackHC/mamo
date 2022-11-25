@@ -1,5 +1,4 @@
 import os
-import pickle
 from dataclasses import dataclass
 from typing import Optional, Dict
 
@@ -9,14 +8,14 @@ from persistent import Persistent
 from persistent.mapping import PersistentMapping
 from transaction import TransactionManager
 
-from mamo.internal.bimap import PersistentBimap
-from mamo.internal.cached_values import CachedValue, ExternallyCachedFilePath, ExternallyCachedValue
+from mamo.internal.common.bimap import PersistentBimap
+from mamo.internal.cached_values import CachedValue, ExternallyCachedFilePath
 from mamo.internal.fingerprints import Fingerprint
 from mamo.internal.identities import ValueIdentity
 from mamo.internal.module_extension import MODULE_EXTENSIONS
 from mamo.internal.result_metadata import ResultMetadata
-from mamo.internal.stopwatch_context import StopwatchContext
-from mamo.internal.weakref_utils import ObjectProxy
+from mamo.internal.common.stopwatch_context import StopwatchContext
+from mamo.internal.common.weakref_utils import ObjectProxy
 
 MAX_DB_CACHED_VALUE_SIZE = 1024
 

@@ -2,14 +2,14 @@ import weakref
 from dataclasses import dataclass
 from typing import MutableMapping, Set
 
-from mamo.internal.bimap import MappingBimap
+from mamo.internal.common.bimap import MappingBimap
 from mamo.internal.delayed_interruption_context import delayed_interruption
 from mamo.internal.fingerprints import Fingerprint
 from mamo.internal.common.key_id_dict import KeyIdDict
-from mamo.internal.identities import ValueIdentity, ComputedValueIdentity
+from mamo.internal.identities import ValueIdentity
 from mamo.internal.providers import ValueProvider
 from mamo.internal.staleness_registry import StalenessRegistry
-from mamo.internal.weakref_utils import WeakKeyIdMap
+from mamo.internal.common.weakref_utils import WeakKeyIdMap
 
 
 @dataclass

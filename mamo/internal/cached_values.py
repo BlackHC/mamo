@@ -9,7 +9,7 @@ class CachedValue:
     """Wraps a value that is being cached offline."""
 
     def unlink(self) -> NoReturn:
-        # This value is about to not be part of the cache anymore.
+        # This value is about to be removed from the cache.
         # Deal with it (by removing auxiliary files etc).
         pass
 
